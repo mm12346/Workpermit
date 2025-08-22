@@ -411,7 +411,7 @@
         }
         
         // --- View Management & Navigation ---
-        function showLoginView() {
+        function showLoginView(permitIdToOpen = null) {
             loginSection.classList.remove('hidden');
             loginSection.classList.add('flex');
             registerSection.classList.add('hidden');
@@ -419,6 +419,10 @@
             forgotPasswordSection.classList.add('hidden');
             forgotPasswordSection.classList.remove('flex');
             appLayout.classList.add('hidden');
+            
+            if(permitIdToOpen) {
+                sessionStorage.setItem('permitIdToOpen', permitIdToOpen);
+            }
         }
 
         function showRegisterView() {
@@ -442,7 +446,7 @@
             appLayout.classList.add('hidden');
         }
 
-        function showDashboardView(user) {
+        function showDashboardView(user, permitIdToOpen = null) {
             loginSection.classList.add('hidden');
             registerSection.classList.add('hidden');
             forgotPasswordSection.classList.add('hidden');
@@ -457,6 +461,7 @@
             let defaultPage = '';
 
             const scanMenu = `<a href="#" class="sidebar-link block py-2.5 px-4 rounded transition duration-200 hover:bg-green-700" data-page="scanner"><i class="fas fa-qrcode w-6"></i>สแกน</a>`;
+            const checkPermitMenu = `<a href="#" class="sidebar-link block py-2.5 px-4 rounded transition duration-200 hover:bg-green-700" data-page="check-permit"><i class="fas fa-search w-6"></i>ตรวจสอบ Work Permit</a>`;
 
             switch(user.role) {
                 case 'Admin':
@@ -465,6 +470,7 @@
                         <a href="#" class="sidebar-link block py-2.5 px-4 rounded transition duration-200 hover:bg-green-700" data-page="admin-users"><i class="fas fa-users-cog w-6"></i>จัดการผู้ใช้</a>
                         <a href="#" class="sidebar-link block py-2.5 px-4 rounded transition duration-200 hover:bg-green-700" data-page="all-permits"><i class="fas fa-archive w-6"></i>รายการคำขอทั้งหมด</a>
                         ${scanMenu}
+                        ${checkPermitMenu}
                     `;
                     defaultPage = 'admin-users';
                     break;
@@ -473,6 +479,7 @@
                         <a href="#" class="sidebar-link block py-2.5 px-4 rounded transition duration-200 hover:bg-green-700" data-page="sectionmanager-permits"><i class="fas fa-clipboard-list w-6"></i>คำขอ (Section Manager)</a>
                         <a href="#" class="sidebar-link block py-2.5 px-4 rounded transition duration-200 hover:bg-green-700" data-page="all-permits"><i class="fas fa-archive w-6"></i>รายการทั้งหมด</a>
                         ${scanMenu}
+                        ${checkPermitMenu}
                     `;
                     defaultPage = 'sectionmanager-permits';
                     break;
@@ -481,6 +488,7 @@
                         <a href="#" class="sidebar-link block py-2.5 px-4 rounded transition duration-200 hover:bg-green-700" data-page="gm-permits"><i class="fas fa-user-tie w-6"></i>คำขอ (GM)</a>
                         <a href="#" class="sidebar-link block py-2.5 px-4 rounded transition duration-200 hover:bg-green-700" data-page="all-permits"><i class="fas fa-archive w-6"></i>รายการทั้งหมด</a>
                         ${scanMenu}
+                        ${checkPermitMenu}
                     `;
                     defaultPage = 'gm-permits';
                     break;
@@ -489,6 +497,7 @@
                         <a href="#" class="sidebar-link block py-2.5 px-4 rounded transition duration-200 hover:bg-green-700" data-page="contractor-dashboard"><i class="fas fa-tachometer-alt w-6"></i>ภาพรวม</a>
                         <a href="#" class="sidebar-link block py-2.5 px-4 rounded transition duration-200 hover:bg-green-700" data-page="contractor-permits"><i class="fas fa-file-alt w-6"></i>Work Permits</a>
                         ${scanMenu}
+                        ${checkPermitMenu}
                     `;
                     defaultPage = 'contractor-dashboard';
                     break;
@@ -505,7 +514,11 @@
                 });
             });
 
-            navigateTo(defaultPage);
+            if (permitIdToOpen) {
+                openPermitDetailModal(permitIdToOpen);
+            } else {
+                navigateTo(defaultPage);
+            }
         }
 
         async function navigateTo(page) {
@@ -542,6 +555,10 @@
                     case 'scanner':
                         pageTitle.textContent = 'สแกน QR Code';
                         renderScannerPage();
+                        break;
+                    case 'check-permit':
+                        pageTitle.textContent = 'ตรวจสอบ Work Permit';
+                        renderCheckPermitPage();
                         break;
                     case 'contractor-dashboard':
                         pageTitle.textContent = 'ภาพรวม';
@@ -633,6 +650,55 @@
                 </div>
             `;
             document.getElementById('start-scan-btn').addEventListener('click', startQrScanner);
+        }
+
+        function renderCheckPermitPage() {
+            pageContent.innerHTML = `
+                <div class="bg-white p-6 rounded-lg shadow-md max-w-lg mx-auto">
+                    <h2 class="text-xl font-bold text-center mb-4">ตรวจสอบ Work Permit</h2>
+                    <div id="check-qr-reader" class="w-full border-2 border-dashed rounded-lg mb-4 hidden"></div>
+                    <p class="text-center text-gray-600 text-sm mb-6">กรุณากรอก Permit ID หรือสแกน QR Code</p>
+                    <form id="check-permit-form">
+                        <div class="relative mb-4 flex items-center">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3"><i class="fa-solid fa-id-card-clip text-gray-400"></i></span>
+                            <input type="text" id="check-permit-id" placeholder="Permit ID (เช่น WP123456789)" class="w-full bg-gray-100 text-gray-800 rounded-md py-2 pl-10 pr-3 focus:outline-none" required>
+                            <button type="button" id="scan-for-check-btn" class="ml-2 bg-blue-600 text-white px-3 py-2 rounded-md hover:bg-blue-700 flex-shrink-0"><i class="fas fa-qrcode"></i></button>
+                        </div>
+                        <button type="submit" class="w-full bg-green-700 text-white font-bold py-2 px-4 rounded-full hover:bg-green-800 transition duration-300">
+                            <i class="fas fa-search mr-2"></i>ค้นหา
+                        </button>
+                    </form>
+                </div>
+            `;
+            document.getElementById('check-permit-form').addEventListener('submit', handleCheckPermit);
+            document.getElementById('scan-for-check-btn').addEventListener('click', () => {
+                const readerElement = document.getElementById('check-qr-reader');
+                
+                const onScanSuccess = (decodedText, decodedResult) => {
+                    html5QrCode.stop().then(ignore => {
+                        let permitId = null;
+                        try {
+                            const url = new URL(decodedText);
+                            permitId = url.searchParams.get('permitId');
+                        } catch (_) {
+                            const permitIdMatch = decodedText.match(/PermitID: (\w+)/);
+                            if (permitIdMatch && permitIdMatch[1]) {
+                                permitId = permitIdMatch[1];
+                            }
+                        }
+
+                        if (permitId) {
+                            document.getElementById('check-permit-id').value = permitId;
+                            showAlert('สแกนสำเร็จ! กรุณากดปุ่มค้นหา', 'success');
+                        } else {
+                            showAlert('ไม่พบ Permit ID ใน QR Code', 'error');
+                        }
+                        readerElement.classList.add('hidden');
+                    }).catch(err => console.error("Failed to stop QR scanner.", err));
+                };
+                
+                startQrScanner('check-qr-reader', onScanSuccess);
+            });
         }
 
         async function renderContractorDashboardPage() {
@@ -1015,7 +1081,9 @@
                 if (user) {
                     currentUser = user;
                     sessionStorage.setItem('workPermitUser', JSON.stringify(user));
-                    showDashboardView(user);
+                    const permitIdToOpen = sessionStorage.getItem('permitIdToOpen');
+                    sessionStorage.removeItem('permitIdToOpen');
+                    showDashboardView(user, permitIdToOpen);
                 } else {
                     document.getElementById('login-error').textContent = 'Username หรือรหัสผ่านไม่ถูกต้อง';
                 }
@@ -1238,6 +1306,20 @@
             }
         }
 
+        async function handleCheckPermit(e) {
+            e.preventDefault();
+            const permitId = document.getElementById('check-permit-id').value;
+            if (!permitId) {
+                showAlert('กรุณากรอก Permit ID', 'warning');
+                return;
+            }
+            try {
+                await openPermitDetailModal(permitId);
+            } catch (error) {
+                console.error("Error checking permit:", error);
+            }
+        }
+
         // --- Utility & Data Functions ---
         const showLoader = () => loadingOverlay.classList.remove('hidden');
         const hideLoader = () => loadingOverlay.classList.add('hidden');
@@ -1338,31 +1420,29 @@
             container.appendChild(q14Item);
         }
 
-        function startQrScanner() {
-            const qrReaderElement = document.getElementById("qr-reader");
-            const resultsElement = document.getElementById("qr-reader-results");
-            
-            if (!html5QrCode) {
-                html5QrCode = new Html5Qrcode("qr-reader");
+        function startQrScanner(readerElementId, successCallback) {
+            const qrReaderElement = document.getElementById(readerElementId);
+            if (!qrReaderElement) {
+                console.error("QR Reader element not found:", readerElementId);
+                return;
             }
+            
+            qrReaderElement.classList.remove('hidden');
 
-            const qrCodeSuccessCallback = (decodedText, decodedResult) => {
-                resultsElement.textContent = `กำลังค้นหา: ${decodedText}`;
-                html5QrCode.stop().then(ignore => {
-                    const permitIdMatch = decodedText.match(/PermitID: (\w+)/);
-                    if (permitIdMatch && permitIdMatch[1]) {
-                        openPermitDetailModal(permitIdMatch[1]);
-                    } else {
-                        showAlert('รูปแบบ QR Code ไม่ถูกต้อง', 'error');
-                    }
-                }).catch(err => console.error("Failed to stop QR scanner.", err));
-            };
-
+            if (!html5QrCode) {
+                html5QrCode = new Html5Qrcode(readerElementId);
+            } else if (html5QrCode.isScanning) {
+                html5QrCode.stop().catch(err => console.log("Ignoring error while stopping previous scan."));
+            }
+            
+            html5QrCode.elementId = readerElementId;
+            
             const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-            html5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback)
+            html5QrCode.start({ facingMode: "environment" }, config, successCallback)
                 .catch(err => {
                     showAlert('ไม่สามารถเข้าถึงกล้องได้', 'error');
                     console.error("Unable to start scanning.", err);
+                    qrReaderElement.classList.add('hidden');
                 });
         }
 
@@ -1376,13 +1456,16 @@
                 console.error("Could not fetch branches on initial load.", e);
                 showAlert("ไม่สามารถโหลดข้อมูลสาขาได้ กรุณาลองอีกครั้ง", "error");
             }
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const permitIdFromUrl = urlParams.get('permitId');
 
             const storedUser = sessionStorage.getItem('workPermitUser');
             if (storedUser) {
                 currentUser = JSON.parse(storedUser);
-                showDashboardView(currentUser);
+                showDashboardView(currentUser, permitIdFromUrl);
             } else {
-                showLoginView();
+                showLoginView(permitIdFromUrl);
             }
         });
     </script>
