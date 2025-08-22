@@ -8,9 +8,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
-    <!-- QR Code Generator & Scanner Libraries -->
+    <!-- QR Code Generator Library -->
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <!-- QR Code Scanner Library -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
         /* Custom styles */
         @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap');
@@ -50,6 +51,11 @@
         /* Custom modal transition */
         #alert-modal-content {
             transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+        }
+        #qr-reader {
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            overflow: hidden;
         }
     </style>
 </head>
@@ -100,6 +106,7 @@
                         <p id="login-error" class="text-red-400 text-xs italic mt-4 text-center"></p>
                     </form>
                 </div>
+
             </div>
         </div>
 
@@ -181,6 +188,13 @@
                         <p id="forgot-error" class="text-red-500 text-xs italic mt-4 text-center"></p>
                     </form>
                 </div>
+            </div>
+        </div>
+
+        <!-- Permit Check Result Section -->
+        <div id="permit-check-section" class="hidden min-h-screen bg-gray-100 p-4 md:p-8">
+            <div id="permit-check-content" class="max-w-4xl mx-auto bg-white rounded-lg shadow-xl p-6">
+                <!-- Permit details will be rendered here -->
             </div>
         </div>
 
@@ -266,13 +280,14 @@
         let contractorDataCache = null;
         let branchesCache = [];
         let isDemoMode = false;
-        let html5QrCode = null;
+        let html5QrCode = null; // To hold the scanner instance
 
         // --- DOM Elements ---
         const loadingOverlay = document.getElementById('loading-overlay');
         const loginSection = document.getElementById('login-section');
         const registerSection = document.getElementById('register-section');
         const forgotPasswordSection = document.getElementById('forgot-password-section');
+        const permitCheckSection = document.getElementById('permit-check-section');
         const appLayout = document.getElementById('app-layout');
         const pageContent = document.getElementById('page-content');
         const pageTitle = document.getElementById('page-title');
@@ -378,7 +393,7 @@
 
         // --- API Caller ---
         async function callAppsScript(action, params = {}) {
-            const publicActions = ['checkLogin', 'registerUser', 'getBranches', 'forgotPassword', 'getPermitDetails'];
+            const publicActions = ['checkLogin', 'registerUser', 'getBranches', 'forgotPassword', 'getPublicPermitDetails'];
             if (!publicActions.includes(action) && currentUser) {
                 params.currentUser = { username: currentUser.username, role: currentUser.role, branchId: currentUser.branchId };
             }
@@ -411,18 +426,15 @@
         }
         
         // --- View Management & Navigation ---
-        function showLoginView(permitIdToOpen = null) {
+        function showLoginView() {
             loginSection.classList.remove('hidden');
             loginSection.classList.add('flex');
             registerSection.classList.add('hidden');
             registerSection.classList.remove('flex');
             forgotPasswordSection.classList.add('hidden');
             forgotPasswordSection.classList.remove('flex');
+            permitCheckSection.classList.add('hidden');
             appLayout.classList.add('hidden');
-            
-            if(permitIdToOpen) {
-                sessionStorage.setItem('permitIdToOpen', permitIdToOpen);
-            }
         }
 
         function showRegisterView() {
@@ -432,6 +444,7 @@
             registerSection.classList.add('flex');
             forgotPasswordSection.classList.add('hidden');
             forgotPasswordSection.classList.remove('flex');
+            permitCheckSection.classList.add('hidden');
             appLayout.classList.add('hidden');
             populateBranchDropdown('register-branch');
         }
@@ -443,13 +456,23 @@
             registerSection.classList.remove('flex');
             forgotPasswordSection.classList.remove('hidden');
             forgotPasswordSection.classList.add('flex');
+            permitCheckSection.classList.add('hidden');
             appLayout.classList.add('hidden');
         }
-
-        function showDashboardView(user, permitIdToOpen = null) {
+        
+        function showPermitCheckResultView() {
             loginSection.classList.add('hidden');
             registerSection.classList.add('hidden');
             forgotPasswordSection.classList.add('hidden');
+            appLayout.classList.add('hidden');
+            permitCheckSection.classList.remove('hidden');
+        }
+
+        function showDashboardView(user) {
+            loginSection.classList.add('hidden');
+            registerSection.classList.add('hidden');
+            forgotPasswordSection.classList.add('hidden');
+            permitCheckSection.classList.add('hidden');
             appLayout.classList.remove('hidden');
 
             document.getElementById('user-name').textContent = user.name;
@@ -460,8 +483,8 @@
             let menuItems = '';
             let defaultPage = '';
 
-            const scanMenu = `<a href="#" class="sidebar-link block py-2.5 px-4 rounded transition duration-200 hover:bg-green-700" data-page="scanner"><i class="fas fa-qrcode w-6"></i>สแกน</a>`;
-            const checkPermitMenu = `<a href="#" class="sidebar-link block py-2.5 px-4 rounded transition duration-200 hover:bg-green-700" data-page="check-permit"><i class="fas fa-search w-6"></i>ตรวจสอบ Work Permit</a>`;
+            // Common menu item for all roles
+            const checkPermitMenu = `<a href="#" class="sidebar-link block py-2.5 px-4 rounded transition duration-200 hover:bg-green-700" data-page="check-permit"><i class="fas fa-search w-6"></i>ตรวจสอบ Permit</a>`;
 
             switch(user.role) {
                 case 'Admin':
@@ -469,8 +492,6 @@
                     menuItems = `
                         <a href="#" class="sidebar-link block py-2.5 px-4 rounded transition duration-200 hover:bg-green-700" data-page="admin-users"><i class="fas fa-users-cog w-6"></i>จัดการผู้ใช้</a>
                         <a href="#" class="sidebar-link block py-2.5 px-4 rounded transition duration-200 hover:bg-green-700" data-page="all-permits"><i class="fas fa-archive w-6"></i>รายการคำขอทั้งหมด</a>
-                        ${scanMenu}
-                        ${checkPermitMenu}
                     `;
                     defaultPage = 'admin-users';
                     break;
@@ -478,8 +499,6 @@
                     menuItems = `
                         <a href="#" class="sidebar-link block py-2.5 px-4 rounded transition duration-200 hover:bg-green-700" data-page="sectionmanager-permits"><i class="fas fa-clipboard-list w-6"></i>คำขอ (Section Manager)</a>
                         <a href="#" class="sidebar-link block py-2.5 px-4 rounded transition duration-200 hover:bg-green-700" data-page="all-permits"><i class="fas fa-archive w-6"></i>รายการทั้งหมด</a>
-                        ${scanMenu}
-                        ${checkPermitMenu}
                     `;
                     defaultPage = 'sectionmanager-permits';
                     break;
@@ -487,8 +506,6 @@
                     menuItems = `
                         <a href="#" class="sidebar-link block py-2.5 px-4 rounded transition duration-200 hover:bg-green-700" data-page="gm-permits"><i class="fas fa-user-tie w-6"></i>คำขอ (GM)</a>
                         <a href="#" class="sidebar-link block py-2.5 px-4 rounded transition duration-200 hover:bg-green-700" data-page="all-permits"><i class="fas fa-archive w-6"></i>รายการทั้งหมด</a>
-                        ${scanMenu}
-                        ${checkPermitMenu}
                     `;
                     defaultPage = 'gm-permits';
                     break;
@@ -496,13 +513,11 @@
                     menuItems = `
                         <a href="#" class="sidebar-link block py-2.5 px-4 rounded transition duration-200 hover:bg-green-700" data-page="contractor-dashboard"><i class="fas fa-tachometer-alt w-6"></i>ภาพรวม</a>
                         <a href="#" class="sidebar-link block py-2.5 px-4 rounded transition duration-200 hover:bg-green-700" data-page="contractor-permits"><i class="fas fa-file-alt w-6"></i>Work Permits</a>
-                        ${scanMenu}
-                        ${checkPermitMenu}
                     `;
                     defaultPage = 'contractor-dashboard';
                     break;
             }
-            menuContainer.innerHTML = menuItems;
+            menuContainer.innerHTML = menuItems + checkPermitMenu;
 
             document.getElementById('logout-btn').addEventListener('click', handleLogout);
             document.getElementById('menu-toggle-btn').addEventListener('click', toggleSidebar);
@@ -514,19 +529,10 @@
                 });
             });
 
-            if (permitIdToOpen) {
-                openPermitDetailModal(permitIdToOpen);
-            } else {
-                navigateTo(defaultPage);
-            }
+            navigateTo(defaultPage);
         }
 
         async function navigateTo(page) {
-            // Stop scanner if navigating away from the scanner page
-            if (html5QrCode && html5QrCode.isScanning) {
-                html5QrCode.stop().catch(err => console.error("Error stopping scanner:", err));
-            }
-
             document.querySelectorAll('.sidebar-link').forEach(link => {
                 link.classList.toggle('active', link.dataset.page === page);
             });
@@ -552,14 +558,6 @@
                         pageTitle.textContent = 'รายการ Work Permit ทั้งหมด';
                         await renderAllPermitsPage();
                         break;
-                    case 'scanner':
-                        pageTitle.textContent = 'สแกน QR Code';
-                        renderScannerPage();
-                        break;
-                    case 'check-permit':
-                        pageTitle.textContent = 'ตรวจสอบ Work Permit';
-                        renderCheckPermitPage();
-                        break;
                     case 'contractor-dashboard':
                         pageTitle.textContent = 'ภาพรวม';
                         await renderContractorDashboardPage();
@@ -567,6 +565,10 @@
                     case 'contractor-permits':
                         pageTitle.textContent = 'จัดการ Work Permits';
                         await renderContractorPermitsPage();
+                        break;
+                    case 'check-permit':
+                        pageTitle.textContent = 'ตรวจสอบ Work Permit';
+                        renderCheckPermitPage(pageContent);
                         break;
                 }
             } catch (error) {
@@ -634,90 +636,6 @@
                 </div>
             `;
             renderPermitTable(data.permits);
-        }
-
-        function renderScannerPage() {
-            pageContent.innerHTML = `
-                <div class="bg-white p-6 rounded-lg shadow-md max-w-lg mx-auto">
-                    <h2 class="text-xl font-bold text-center mb-4">สแกน QR Code เพื่อดูรายละเอียด</h2>
-                    <div id="qr-reader" class="w-full border-2 border-dashed rounded-lg"></div>
-                    <div id="qr-reader-results" class="mt-4 text-center font-mono"></div>
-                    <div class="text-center mt-4">
-                        <button id="start-scan-btn" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700">
-                            <i class="fas fa-camera mr-2"></i> เริ่มสแกน
-                        </button>
-                    </div>
-                </div>
-            `;
-            document.getElementById('start-scan-btn').addEventListener('click', () => startQrScanner('qr-reader', (decodedText) => {
-                const resultsElement = document.getElementById("qr-reader-results");
-                resultsElement.textContent = `กำลังค้นหา...`;
-                let permitId = null;
-                try {
-                    const url = new URL(decodedText);
-                    permitId = url.searchParams.get('permitId');
-                } catch (_) {
-                    const permitIdMatch = decodedText.match(/PermitID: (\w+)/);
-                    if (permitIdMatch && permitIdMatch[1]) {
-                        permitId = permitIdMatch[1];
-                    }
-                }
-
-                if (permitId) {
-                    openPermitDetailModal(permitId);
-                } else {
-                    showAlert('รูปแบบ QR Code ไม่ถูกต้อง', 'error');
-                }
-            }));
-        }
-
-        function renderCheckPermitPage() {
-            pageContent.innerHTML = `
-                <div class="bg-white p-6 rounded-lg shadow-md max-w-lg mx-auto">
-                    <h2 class="text-xl font-bold text-center mb-4">ตรวจสอบ Work Permit</h2>
-                    <div id="check-qr-reader" class="w-full border-2 border-dashed rounded-lg mb-4 hidden"></div>
-                    <p class="text-center text-gray-600 text-sm mb-6">กรุณากรอก Permit ID หรือสแกน QR Code</p>
-                    <form id="check-permit-form">
-                        <div class="relative mb-4 flex items-center">
-                            <span class="absolute inset-y-0 left-0 flex items-center pl-3"><i class="fa-solid fa-id-card-clip text-gray-400"></i></span>
-                            <input type="text" id="check-permit-id" placeholder="Permit ID (เช่น WP123456789)" class="w-full bg-gray-100 text-gray-800 rounded-md py-2 pl-10 pr-3 focus:outline-none" required>
-                            <button type="button" id="scan-for-check-btn" class="ml-2 bg-blue-600 text-white px-3 py-2 rounded-md hover:bg-blue-700 flex-shrink-0"><i class="fas fa-qrcode"></i></button>
-                        </div>
-                        <button type="submit" class="w-full bg-green-700 text-white font-bold py-2 px-4 rounded-full hover:bg-green-800 transition duration-300">
-                            <i class="fas fa-search mr-2"></i>ค้นหา
-                        </button>
-                    </form>
-                </div>
-            `;
-            document.getElementById('check-permit-form').addEventListener('submit', handleCheckPermit);
-            document.getElementById('scan-for-check-btn').addEventListener('click', () => {
-                const readerElement = document.getElementById('check-qr-reader');
-                
-                const onScanSuccess = (decodedText, decodedResult) => {
-                    html5QrCode.stop().then(ignore => {
-                        let permitId = null;
-                        try {
-                            const url = new URL(decodedText);
-                            permitId = url.searchParams.get('permitId');
-                        } catch (_) {
-                            const permitIdMatch = decodedText.match(/PermitID: (\w+)/);
-                            if (permitIdMatch && permitIdMatch[1]) {
-                                permitId = permitIdMatch[1];
-                            }
-                        }
-
-                        if (permitId) {
-                            document.getElementById('check-permit-id').value = permitId;
-                            showAlert('สแกนสำเร็จ! กรุณากดปุ่มค้นหา', 'success');
-                        } else {
-                            showAlert('ไม่พบ Permit ID ใน QR Code', 'error');
-                        }
-                        readerElement.classList.add('hidden');
-                    }).catch(err => console.error("Failed to stop QR scanner.", err));
-                };
-                
-                startQrScanner('check-qr-reader', onScanSuccess);
-            });
         }
 
         async function renderContractorDashboardPage() {
@@ -824,6 +742,97 @@
                     </tbody>
                 </table>
             `;
+        }
+
+        function renderCheckPermitPage(container) {
+            const uniqueId = `checker-${Date.now()}`;
+            container.innerHTML = `
+                <div class="bg-white p-6 rounded-lg shadow-md max-w-lg mx-auto">
+                    <h2 class="text-xl font-bold text-center mb-4 text-gray-800">ตรวจสอบ Work Permit</h2>
+                    <div class="relative mb-4">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3"><i class="fa-solid fa-ticket text-gray-400"></i></span>
+                        <input type="text" id="check-permit-id-${uniqueId}" placeholder="กรอก Permit ID" class="w-full bg-gray-100 text-gray-800 rounded-md py-2 pl-10 pr-3 focus:outline-none">
+                    </div>
+                    <button id="search-permit-btn-${uniqueId}" class="w-full bg-green-700 text-white font-bold py-2 px-4 rounded-full hover:bg-green-800 transition duration-300 mb-2">
+                        <i class="fas fa-search"></i> ค้นหา
+                    </button>
+                    <button id="scan-qr-btn-${uniqueId}" class="w-full bg-gray-600 text-white font-bold py-2 px-4 rounded-full hover:bg-gray-700 transition duration-300">
+                        <i class="fas fa-qrcode"></i> สแกน QR Code
+                    </button>
+                    <div id="qr-reader-${uniqueId}" class="mt-4"></div>
+                    <p id="qr-status-${uniqueId}" class="text-center text-sm text-gray-500 mt-2"></p>
+                </div>
+            `;
+
+            document.getElementById(`search-permit-btn-${uniqueId}`).addEventListener('click', () => {
+                const permitId = document.getElementById(`check-permit-id-${uniqueId}`).value;
+                handlePublicSearch(permitId);
+            });
+
+            document.getElementById(`scan-qr-btn-${uniqueId}`).addEventListener('click', () => {
+                startQrScanner(`qr-reader-${uniqueId}`, `qr-status-${uniqueId}`);
+            });
+        }
+
+        function renderPublicPermitDetails(permit) {
+            const contentContainer = document.getElementById('permit-check-content');
+            const formatTextarea = (text) => text ? String(text).replace(/\n/g, '<br>') : '-';
+            
+            const backButtonAction = currentUser ? `navigateTo(document.querySelector('.sidebar-link.active')?.dataset.page || 'contractor-dashboard')` : `showLoginView()`;
+
+            contentContainer.innerHTML = `
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold text-gray-800">รายละเอียด Work Permit</h2>
+                    <button onclick="${backButtonAction}" class="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300">&larr; กลับ</button>
+                </div>
+                <div class="space-y-4 text-sm">
+                    <!-- Main Details -->
+                    <div class="p-4 border rounded-lg bg-gray-50">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
+                            <div><strong class="text-gray-600 w-32 inline-block">Permit ID:</strong><span class="font-mono">${permit.PermitID}</span></div>
+                            <div><strong class="text-gray-600 w-32 inline-block">สถานะรวม:</strong><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(permit.Status)}">${permit.Status}</span></div>
+                            <div><strong class="text-gray-600 w-32 inline-block">บริษัทผู้รับเหมา:</strong>${permit.ContractorName || permit.ContractorUsername || 'N/A'}</div>
+                            <div><strong class="text-gray-600 w-32 inline-block">โครงการ:</strong>${permit.ProjectName}</div>
+                            <div><strong class="text-gray-600 w-32 inline-block">สาขา:</strong>${permit.BranchName}</div>
+                            <div><strong class="text-gray-600 w-32 inline-block">เวลา:</strong>${permit.WorkTime}</div>
+                            <div><strong class="text-gray-600 w-32 inline-block">วันที่ปฏิบัติงาน:</strong>${new Date(permit.StartDate).toLocaleDateString('th-TH')} - ${new Date(permit.EndDate).toLocaleDateString('th-TH')}</div>
+                            <div><strong class="text-gray-600 w-32 inline-block">ผู้ประสานงานหลัก:</strong>${permit.PrimaryContactEmployeeName}</div>
+                            <div><strong class="text-gray-600 w-32 inline-block">จำนวนคน:</strong>${permit.NumWorkers} คน</div>
+                        </div>
+                    </div>
+
+                    <!-- Job Details -->
+                    <div class="space-y-3">
+                        <div><h4 class="font-semibold text-gray-800 border-b pb-1">ลักษณะงาน</h4><p class="mt-1 text-gray-700 pl-2">${formatTextarea(permit.JobDescription)}</p></div>
+                        <div><h4 class="font-semibold text-gray-800 border-b pb-1">รายชื่อผู้ปฏิบัติงาน</h4><p class="mt-1 text-gray-700 pl-2">${formatTextarea(permit.WorkerList)}</p></div>
+                        <div><h4 class="font-semibold text-gray-800 border-b pb-1">อุปกรณ์ PPE</h4><p class="mt-1 text-gray-700 pl-2">${formatTextarea(permit.PPE)}</p></div>
+                        <div><h4 class="font-semibold text-gray-800 border-b pb-1">การตรวจสอบความปลอดภัย</h4><p class="mt-1 text-gray-700 pl-2">${formatTextarea(permit.SafetyChecklist)}</p></div>
+                    </div>
+                </div>
+                
+                <!-- Approval Status -->
+                <div class="mt-6 pt-4 border-t grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <h4 class="font-semibold text-gray-800 mb-2">การอนุมัติโดย Section Manager</h4>
+                        <div class="space-y-1 text-sm">
+                            <div><strong class="text-gray-600 w-24 inline-block">สถานะ:</strong> <span class="${getStatusClass(permit.SectionManager_Status)} px-2 py-0.5 rounded-full text-xs">${permit.SectionManager_Status || 'N/A'}</span></div>
+                            <div><strong class="text-gray-600 w-24 inline-block">ผู้อนุมัติ:</strong> ${permit.SectionManager_ApproverName || permit.SectionManager_ApproverUsername || '-'}</div>
+                            <div><strong class="text-gray-600 w-24 inline-block">วันที่:</strong> ${permit.SectionManager_ApprovalTimestamp ? new Date(permit.SectionManager_ApprovalTimestamp).toLocaleString('th-TH') : '-'}</div>
+                            <div><strong class="text-gray-600 w-24 inline-block">เหตุผล:</strong> ${permit.SectionManager_Reason || '-'}</div>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-gray-800 mb-2">การอนุมัติโดย GM</h4>
+                        <div class="space-y-1 text-sm">
+                            <div><strong class="text-gray-600 w-24 inline-block">สถานะ:</strong> <span class="${getStatusClass(permit.GM_Status)} px-2 py-0.5 rounded-full text-xs">${permit.GM_Status || 'N/A'}</span></div>
+                            <div><strong class="text-gray-600 w-24 inline-block">ผู้อนุมัติ:</strong> ${permit.GM_ApproverName || permit.GM_ApproverUsername || '-'}</div>
+                            <div><strong class="text-gray-600 w-24 inline-block">วันที่:</strong> ${permit.GM_ApprovalTimestamp ? new Date(permit.GM_ApprovalTimestamp).toLocaleString('th-TH') : '-'}</div>
+                            <div><strong class="text-gray-600 w-24 inline-block">เหตุผล:</strong> ${permit.GM_Reason || '-'}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            showPermitCheckResultView();
         }
         
         // --- Modal Handlers ---
@@ -976,22 +985,20 @@
             const permit = await callAppsScript('getPermitDetails', { permitId });
             
             let actionButtons = '';
-            if (currentUser) { // Only show buttons if logged in
-                const canSectionManagerApprove = currentUser.role === 'SectionManager' && permit.Status === 'Pending Section Manager Approval';
-                const canGmApprove = currentUser.role === 'GM' && permit.Status === 'Pending GM Approval';
+            const canSectionManagerApprove = currentUser.role === 'SectionManager' && permit.Status === 'Pending Section Manager Approval';
+            const canGmApprove = currentUser.role === 'GM' && permit.Status === 'Pending GM Approval';
 
-                if (canSectionManagerApprove || canGmApprove) {
-                    actionButtons = `
-                        <div class="mt-6 pt-4 border-t">
-                            <h4 class="font-semibold text-gray-800 mb-2">การดำเนินการอนุมัติ (${currentUser.role})</h4>
-                            <label for="rejectionReason" class="block text-sm font-medium text-gray-700">เหตุผล (กรณีไม่อนุมัติ)</label>
-                            <textarea id="rejectionReason" rows="2" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></textarea>
-                            <div class="flex justify-end space-x-3 mt-4">
-                                <button onclick="handleApprovalAction('${permitId}', 'Rejected')" class="bg-red-600 text-white px-4 py-2 rounded-md">ไม่อนุมัติ</button>
-                                <button onclick="handleApprovalAction('${permitId}', 'Approved')" class="bg-green-600 text-white px-4 py-2 rounded-md">อนุมัติ</button>
-                            </div>
-                        </div>`;
-                }
+            if (canSectionManagerApprove || canGmApprove) {
+                actionButtons = `
+                    <div class="mt-6 pt-4 border-t">
+                        <h4 class="font-semibold text-gray-800 mb-2">การดำเนินการอนุมัติ (${currentUser.role})</h4>
+                        <label for="rejectionReason" class="block text-sm font-medium text-gray-700">เหตุผล (กรณีไม่อนุมัติ)</label>
+                        <textarea id="rejectionReason" rows="2" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></textarea>
+                        <div class="flex justify-end space-x-3 mt-4">
+                            <button onclick="handleApprovalAction('${permitId}', 'Rejected')" class="bg-red-600 text-white px-4 py-2 rounded-md">ไม่อนุมัติ</button>
+                            <button onclick="handleApprovalAction('${permitId}', 'Approved')" class="bg-green-600 text-white px-4 py-2 rounded-md">อนุมัติ</button>
+                        </div>
+                    </div>`;
             }
 
             let qrCodeSection = '';
@@ -1008,7 +1015,7 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
                             <div><strong class="text-gray-600 w-32 inline-block">Permit ID:</strong><span class="font-mono">${permit.PermitID}</span></div>
                             <div><strong class="text-gray-600 w-32 inline-block">สถานะรวม:</strong><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(permit.Status)}">${permit.Status}</span></div>
-                            <div><strong class="text-gray-600 w-32 inline-block">บริษัทผู้รับเหมา:</strong>${permit.ContractorName || 'N/A'}</div>
+                            <div><strong class="text-gray-600 w-32 inline-block">บริษัทผู้รับเหมา:</strong>${permit.ContractorName || permit.ContractorUsername || 'N/A'}</div>
                             <div><strong class="text-gray-600 w-32 inline-block">โครงการ:</strong>${permit.ProjectName}</div>
                             <div><strong class="text-gray-600 w-32 inline-block">สาขา:</strong>${permit.BranchName}</div>
                             <div><strong class="text-gray-600 w-32 inline-block">เวลา:</strong>${permit.WorkTime}</div>
@@ -1102,9 +1109,7 @@
                 if (user) {
                     currentUser = user;
                     sessionStorage.setItem('workPermitUser', JSON.stringify(user));
-                    const permitIdToOpen = sessionStorage.getItem('permitIdToOpen');
-                    sessionStorage.removeItem('permitIdToOpen');
-                    showDashboardView(user, permitIdToOpen);
+                    showDashboardView(user);
                 } else {
                     document.getElementById('login-error').textContent = 'Username หรือรหัสผ่านไม่ถูกต้อง';
                 }
@@ -1327,17 +1332,66 @@
             }
         }
 
-        async function handleCheckPermit(e) {
-            e.preventDefault();
-            const permitId = document.getElementById('check-permit-id').value;
-            if (!permitId) {
+        // --- Permit Checker Functions ---
+        async function handlePublicSearch(permitId) {
+            if (!permitId || permitId.trim() === '') {
                 showAlert('กรุณากรอก Permit ID', 'warning');
                 return;
             }
             try {
-                await openPermitDetailModal(permitId);
+                const permitDetails = await callAppsScript('getPublicPermitDetails', { permitId: permitId.trim() });
+                renderPublicPermitDetails(permitDetails);
             } catch (error) {
-                console.error("Error checking permit:", error);
+                // showAlert is already called in callAppsScript
+            }
+        }
+
+        function startQrScanner(readerId, statusId) {
+            const statusEl = document.getElementById(statusId);
+            if (html5QrCode && html5QrCode.isScanning) {
+                stopQrScanner(readerId, statusId);
+                return;
+            }
+
+            html5QrCode = new Html5Qrcode(readerId);
+            const qrCodeSuccessCallback = (decodedText, decodedResult) => {
+                console.log(`Code matched = ${decodedText}`, decodedResult);
+                stopQrScanner(readerId, statusId);
+                
+                // Extract PermitID from QR string like "PermitID: WP123, Status: Approved"
+                const match = decodedText.match(/PermitID:\s*(\w+)/);
+                const permitId = match ? match[1] : decodedText;
+
+                handlePublicSearch(permitId);
+            };
+            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+            
+            statusEl.textContent = 'กำลังเปิดกล้อง...';
+            document.getElementById(readerId).innerHTML = ''; // Clear previous content
+            html5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback)
+                .then(() => {
+                    statusEl.textContent = 'เล็งกล้องไปที่ QR Code';
+                    const scanButton = document.querySelector(`button[id^="scan-qr-btn-"]`);
+                    if(scanButton) scanButton.innerHTML = '<i class="fas fa-stop-circle"></i> หยุดสแกน';
+                })
+                .catch(err => {
+                    console.error("QR Scanner Error:", err);
+                    statusEl.textContent = 'ไม่สามารถเปิดกล้องได้';
+                    showAlert('ไม่สามารถเข้าถึงกล้องได้ กรุณาตรวจสอบการอนุญาต', 'error');
+                });
+        }
+
+        function stopQrScanner(readerId, statusId) {
+            if (html5QrCode && html5QrCode.isScanning) {
+                html5QrCode.stop().then(() => {
+                    console.log("QR Code scanning stopped.");
+                    document.getElementById(readerId).innerHTML = '';
+                    document.getElementById(statusId).textContent = '';
+                    const scanButton = document.querySelector(`button[id^="scan-qr-btn-"]`);
+                    if(scanButton) scanButton.innerHTML = '<i class="fas fa-qrcode"></i> สแกน QR Code';
+                }).catch(err => {
+                    console.error("Failed to stop scanner:", err);
+                });
             }
         }
 
@@ -1441,32 +1495,6 @@
             container.appendChild(q14Item);
         }
 
-        function startQrScanner(readerElementId, successCallback) {
-            const qrReaderElement = document.getElementById(readerElementId);
-            if (!qrReaderElement) {
-                console.error("QR Reader element not found:", readerElementId);
-                return;
-            }
-            
-            qrReaderElement.classList.remove('hidden');
-
-            if (!html5QrCode) {
-                html5QrCode = new Html5Qrcode(readerElementId);
-            } else if (html5QrCode.isScanning) {
-                html5QrCode.stop().catch(err => console.log("Ignoring error while stopping previous scan."));
-            }
-            
-            html5QrCode.elementId = readerElementId;
-            
-            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-            html5QrCode.start({ facingMode: "environment" }, config, successCallback)
-                .catch(err => {
-                    showAlert('ไม่สามารถเข้าถึงกล้องได้', 'error');
-                    console.error("Unable to start scanning.", err);
-                    qrReaderElement.classList.add('hidden');
-                });
-        }
-
         // --- Initialization ---
         document.addEventListener('DOMContentLoaded', async () => {
             // Fetch branches on initial load to cache them
@@ -1477,16 +1505,13 @@
                 console.error("Could not fetch branches on initial load.", e);
                 showAlert("ไม่สามารถโหลดข้อมูลสาขาได้ กรุณาลองอีกครั้ง", "error");
             }
-            
-            const urlParams = new URLSearchParams(window.location.search);
-            const permitIdFromUrl = urlParams.get('permitId');
 
             const storedUser = sessionStorage.getItem('workPermitUser');
             if (storedUser) {
                 currentUser = JSON.parse(storedUser);
-                showDashboardView(currentUser, permitIdFromUrl);
+                showDashboardView(currentUser);
             } else {
-                showLoginView(permitIdFromUrl);
+                showLoginView();
             }
         });
     </script>
