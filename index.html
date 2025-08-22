@@ -778,12 +778,10 @@
             const contentContainer = document.getElementById('permit-check-content');
             const formatTextarea = (text) => text ? String(text).replace(/\n/g, '<br>') : '-';
             
-            const backButtonAction = currentUser ? `navigateTo(document.querySelector('.sidebar-link.active')?.dataset.page || 'contractor-dashboard')` : `showLoginView()`;
-
             contentContainer.innerHTML = `
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-2xl font-bold text-gray-800">รายละเอียด Work Permit</h2>
-                    <button onclick="${backButtonAction}" class="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300">&larr; กลับ</button>
+                    <button onclick="handleBackFromPermitCheck()" class="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300">&larr; กลับ</button>
                 </div>
                 <div class="space-y-4 text-sm">
                     <!-- Main Details -->
@@ -1197,6 +1195,15 @@
             sessionStorage.removeItem('workPermitUser');
             showLoginView();
         }
+
+        function handleBackFromPermitCheck() {
+            permitCheckSection.classList.add('hidden');
+            if (currentUser) {
+                appLayout.classList.remove('hidden');
+            } else {
+                showLoginView();
+            }
+        }
         
         async function handlePasswordReset(targetUsername) {
             const newPassword = await showPrompt(`กรุณาใส่รหัสผ่านใหม่สำหรับ ${targetUsername}`, 'รีเซ็ตรหัสผ่าน');
@@ -1358,9 +1365,8 @@
                 console.log(`Code matched = ${decodedText}`, decodedResult);
                 stopQrScanner(readerId, statusId);
                 
-                // Extract PermitID from QR string like "PermitID: WP123, Status: Approved"
-                const match = decodedText.match(/PermitID:\s*(\w+)/);
-                const permitId = match ? match[1] : decodedText;
+                // The QR code now directly contains the PermitID
+                const permitId = decodedText;
 
                 handlePublicSearch(permitId);
             };
@@ -1452,7 +1458,7 @@
                 "ได้มีการปิดกั้นพื้นที่บริเวณปฏิบัติงาน หรือใช้กรวยขวาง พร้อมทั้งติดป้ายเตือนอันตรายต่างๆแล้ว",
                 "ได้รับอนุญาติการใช้ไฟฟ้า และมีตู้ไไฟฟ้าย่อยหรือการต่อพ่วงเต้าเสียบจากเจ้าหน้าที่ไฟฟ้าแล้ว",
                 "ก่อนลงมือปฏิบัติงานมีการตรวจสอบความปลอดภัยก่อนทุกครั้ง เช่น ตรวจพื้นที่การทำงาน เครื่องจักร เครื่องมือ เครื่องใช้ไฟฟ้า จะต้องอยู่ในสภาพพร้อมใช้งาน และปลอดภัย",
-                "มีการตัดกระแสไฟฟ้า/ปิดเครื่องจักรที่อาจก่อให้เกิดอันตรายขณะปฏิบัติงานพร้อมทั้งติดตั้งป้ายผู้ไม่เกี่ยวข้อง\"ห้ามเปิด/เดินเครื่องเด็ดขาด\"",
+                "มีการตัดกระแสไฟฟ้า/ปิดเครื่องจักรที่อาจก่อให้เกิดอันตรายขณะปฏิบัติงานพร้อมทั้งติดตั้งป้ายผู้不เกี่ยวข้อง\"ห้ามเปิด/เดินเครื่องเด็ดขาด\"",
                 "พื้นที่ปฏิบัติงานอยู่ในพื้นที่ที่ปลอดภัย /อากาศถ่ายเท หรือมีการระบายอากาศที่เพียงพอ",
                 "ได้รับการอบรมความปลอดภัย/ได้รับการแจ้งเตือนอันตราย และมาตรการควบคุม หรือวิธีป้องกันอันตรายให้กับให้กับผู้ปฏิบัติงานทุกคนทราบ",
                 "กรณีปฏิบัติงานในที่อับอากาศผู้ปฏิบัติต้องเป็นผู้ที่ผ่านการฝึกอบรมตามที่กฎหมายกำหนด",
