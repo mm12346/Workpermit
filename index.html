@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
     <!-- QR Code Generator & Scanner Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-    <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <style>
         /* Custom styles */
         @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap');
@@ -541,7 +541,7 @@
                         break;
                     case 'scanner':
                         pageTitle.textContent = 'สแกน QR Code';
-                        await renderScannerPage();
+                        renderScannerPage();
                         break;
                     case 'contractor-dashboard':
                         pageTitle.textContent = 'ภาพรวม';
@@ -921,7 +921,7 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
                             <div><strong class="text-gray-600 w-32 inline-block">Permit ID:</strong><span class="font-mono">${permit.PermitID}</span></div>
                             <div><strong class="text-gray-600 w-32 inline-block">สถานะรวม:</strong><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(permit.Status)}">${permit.Status}</span></div>
-                            <div><strong class="text-gray-600 w-32 inline-block">บริษัทผู้รับเหมา:</strong>${permit.ContractorName || permit.ContractorUsername || 'N/A'}</div>
+                            <div><strong class="text-gray-600 w-32 inline-block">บริษัทผู้รับเหมา:</strong>${permit.ContractorName || 'N/A'}</div>
                             <div><strong class="text-gray-600 w-32 inline-block">โครงการ:</strong>${permit.ProjectName}</div>
                             <div><strong class="text-gray-600 w-32 inline-block">สาขา:</strong>${permit.BranchName}</div>
                             <div><strong class="text-gray-600 w-32 inline-block">เวลา:</strong>${permit.WorkTime}</div>
@@ -1336,6 +1336,34 @@
                 <textarea id="safety-q14-text" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></textarea>
             `;
             container.appendChild(q14Item);
+        }
+
+        function startQrScanner() {
+            const qrReaderElement = document.getElementById("qr-reader");
+            const resultsElement = document.getElementById("qr-reader-results");
+            
+            if (!html5QrCode) {
+                html5QrCode = new Html5Qrcode("qr-reader");
+            }
+
+            const qrCodeSuccessCallback = (decodedText, decodedResult) => {
+                resultsElement.textContent = `กำลังค้นหา: ${decodedText}`;
+                html5QrCode.stop().then(ignore => {
+                    const permitIdMatch = decodedText.match(/PermitID: (\w+)/);
+                    if (permitIdMatch && permitIdMatch[1]) {
+                        openPermitDetailModal(permitIdMatch[1]);
+                    } else {
+                        showAlert('รูปแบบ QR Code ไม่ถูกต้อง', 'error');
+                    }
+                }).catch(err => console.error("Failed to stop QR scanner.", err));
+            };
+
+            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+            html5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback)
+                .catch(err => {
+                    showAlert('ไม่สามารถเข้าถึงกล้องได้', 'error');
+                    console.error("Unable to start scanning.", err);
+                });
         }
 
         // --- Initialization ---
