@@ -57,6 +57,37 @@
             border-radius: 8px;
             overflow: hidden;
         }
+        
+        /* Print styles */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #generic-modal .modal-content, #generic-modal .modal-content * {
+                visibility: visible;
+            }
+            #generic-modal {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 100%;
+                overflow: visible;
+                background: white;
+            }
+            .modal-content {
+                border: none;
+                box-shadow: none;
+                width: 100%;
+                max-width: 100%;
+                top: 0;
+                margin: 0;
+                padding: 1rem;
+            }
+            .no-print {
+                display: none !important;
+            }
+        }
     </style>
 </head>
 <body class="bg-gray-100">
@@ -79,12 +110,12 @@
                        <path d="M50,25a8,8,0,0,1,8,8v8a8,8,0,0,1-16,0v-8a8,8,0,0,1,8-8m0-5a13,13,0,0,0-13,13v8a13,13,0,0,0,26,0v-8A13,13,0,0,0,50,20Z"/>
                        <path d="M50,55a20,20,0,0,1,20,20v5a0,0,0,0,1,0,0H30a0,0,0,0,1,0,0v-5a20,20,0,0,1,20-20m0-5a25,25,0,0,0-25,25v5a5,5,0,0,0,5,5H70a5,5,0,0,0,5-5v-5A25,25,0,0,0,50,50Z"/>
                     </svg>
-                    <h2 class="text-2xl font-bold text-gray-700 mt-2">JORPOR PLUS</h2>
+                    <h2 class="text-2xl font-bold text-gray-700 mt-2">WORK PERMIT</h2>
                 </div>
 
                 <!-- Login Form -->
                 <div class="bg-green-800 rounded-2xl shadow-xl p-8 text-white">
-                    <h1 class="text-xl font-bold text-center mb-6">ระบบจัดการผู้รับเหมา</h1>
+                    <h1 class="text-xl font-bold text-center mb-6">ระบบจัดการใบขออนุญาตทำงาน</h1>
                     <form id="login-form">
                          <div class="mb-4">
                             <select class="w-full bg-white text-gray-800 rounded-md py-2 px-3 focus:outline-none">
@@ -119,8 +150,18 @@
                 <div class="bg-white rounded-2xl shadow-xl p-8">
                     <form id="register-form">
                         <div class="relative mb-4">
+                             <span class="absolute inset-y-0 left-0 flex items-center pl-3"><i class="fa-solid fa-user-gear text-gray-400"></i></span>
+                             <select id="register-role" class="w-full bg-gray-100 text-gray-800 rounded-md py-2 pl-10 pr-3 focus:outline-none" required>
+                                <option value="" disabled selected>เลือกบทบาท</option>
+                                <option value="Contractor">ผู้รับเหมา (Contractor)</option>
+                                <option value="SectionManager">Section Manager</option>
+                                <option value="GM">ผู้จัดการ (GM)</option>
+                                <option value="BranchAdmin">Admin ประจำสาขา</option>
+                            </select>
+                        </div>
+                        <div id="register-name-wrapper" class="relative mb-4">
                             <span class="absolute inset-y-0 left-0 flex items-center pl-3"><i class="fa-solid fa-id-card text-gray-400"></i></span>
-                            <input type="text" id="register-name" placeholder="ชื่อ-นามสกุล / ชื่อบริษัท" class="w-full bg-gray-100 text-gray-800 rounded-md py-2 pl-10 pr-3 focus:outline-none" required>
+                            <input type="text" id="register-name" placeholder="ชื่อ-นามสกุล" class="w-full bg-gray-100 text-gray-800 rounded-md py-2 pl-10 pr-3 focus:outline-none" required>
                         </div>
                         <div class="relative mb-4">
                             <span class="absolute inset-y-0 left-0 flex items-center pl-3"><i class="fa-solid fa-user-circle text-gray-400"></i></span>
@@ -137,16 +178,6 @@
                          <div class="relative mb-4">
                             <span class="absolute inset-y-0 left-0 flex items-center pl-3"><i class="fa-solid fa-check-double text-gray-400"></i></span>
                             <input type="password" id="register-confirm-password" placeholder="ยืนยันรหัสผ่าน" class="w-full bg-gray-100 text-gray-800 rounded-md py-2 pl-10 pr-3 focus:outline-none" required>
-                        </div>
-                        <div class="relative mb-4">
-                             <span class="absolute inset-y-0 left-0 flex items-center pl-3"><i class="fa-solid fa-user-gear text-gray-400"></i></span>
-                             <select id="register-role" class="w-full bg-gray-100 text-gray-800 rounded-md py-2 pl-10 pr-3 focus:outline-none" required>
-                                <option value="" disabled selected>เลือกบทบาท</option>
-                                <option value="Contractor">ผู้รับเหมา (Contractor)</option>
-                                <option value="SectionManager">Section Manager</option>
-                                <option value="GM">ผู้จัดการ (GM)</option>
-                                <option value="BranchAdmin">Admin ประจำสาขา</option>
-                            </select>
                         </div>
                         <div id="branch-selection-wrapper" class="relative mb-6 hidden">
                              <span class="absolute inset-y-0 left-0 flex items-center pl-3"><i class="fa-solid fa-building text-gray-400"></i></span>
@@ -203,7 +234,7 @@
             <!-- Sidebar -->
             <aside id="sidebar" class="bg-green-800 text-green-100 w-64 min-h-screen fixed top-0 left-0 transform -translate-x-full md:translate-x-0 z-30">
                 <div class="p-4 text-center border-b border-green-700">
-                    <h2 class="text-2xl font-bold text-white">JORPOR PLUS</h2>
+                    <h2 class="text-2xl font-bold text-white">WORK PERMIT</h2>
                     <p id="sidebar-role" class="text-sm text-green-300"></p>
                 </div>
                 <nav id="sidebar-menu" class="p-4 space-y-2"></nav>
@@ -238,7 +269,7 @@
             <div class="modal-content relative top-10 mx-auto p-5 border w-full max-w-3xl shadow-lg rounded-md bg-white">
                  <div class="flex justify-between items-center pb-3 border-b">
                     <h3 id="modal-title" class="text-2xl font-bold text-gray-800">Modal Title</h3>
-                    <div class="modal-close cursor-pointer z-50" onclick="closeModal()">
+                    <div class="modal-close cursor-pointer z-50 no-print" onclick="closeModal()">
                         <svg class="fill-current text-black" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18">
                             <path d="M14.53 4.53l-1.06-1.06L9 7.94 4.53 3.47 3.47 4.53 7.94 9l-4.47 4.47 1.06 1.06L9 10.06l4.47 4.47 1.06-1.06L10.06 9z"></path>
                         </svg>
@@ -579,7 +610,55 @@
         }
 
         // --- Page Renderers ---
+        // Helper function to create search UI
+        function renderSearchUI(container, onSearchCallback) {
+            const uniqueId = `search-${Date.now()}`;
+            container.innerHTML = `
+                <div class="p-4 bg-gray-50 rounded-lg border">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                        <div>
+                            <label for="search-term-${uniqueId}" class="block text-sm font-medium text-gray-700">ค้นหาตามชื่อโครงการ</label>
+                            <input type="text" id="search-term-${uniqueId}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" placeholder="ชื่อโครงการ...">
+                        </div>
+                        <div>
+                            <label for="search-date-${uniqueId}" class="block text-sm font-medium text-gray-700">ค้นหาตามวันที่ปฏิบัติงาน</label>
+                            <input type="date" id="search-date-${uniqueId}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                        </div>
+                        <div class="flex space-x-2">
+                            <button id="search-btn-${uniqueId}" class="w-full bg-green-700 text-white font-bold py-2 px-4 rounded-md hover:bg-green-800 transition duration-300">
+                                <i class="fas fa-search"></i> ค้นหา
+                            </button>
+                            <button id="clear-btn-${uniqueId}" class="w-full bg-gray-500 text-white font-bold py-2 px-4 rounded-md hover:bg-gray-600 transition duration-300">
+                                <i class="fas fa-times"></i> ล้าง
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            const searchTermInput = document.getElementById(`search-term-${uniqueId}`);
+            const searchDateInput = document.getElementById(`search-date-${uniqueId}`);
+            
+            document.getElementById(`search-btn-${uniqueId}`).addEventListener('click', () => {
+                onSearchCallback(searchTermInput.value, searchDateInput.value);
+            });
+
+            document.getElementById(`clear-btn-${uniqueId}`).addEventListener('click', () => {
+                searchTermInput.value = '';
+                searchDateInput.value = '';
+                onSearchCallback('', '');
+            });
+        }
+        
         async function renderAdminUsersPage() {
+             if (branchesCache.length === 0) {
+                try {
+                    const branchData = await callAppsScript('getBranches');
+                    branchesCache = branchData.branches;
+                } catch (e) {
+                    console.error("Could not fetch branches for user page.", e);
+                }
+             }
              const data = await callAppsScript('getUsersByBranch');
              const allBranches = branchesCache;
             pageContent.innerHTML = `
@@ -597,7 +676,12 @@
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
-                                ${data.users.map(u => `
+                                ${data.users.map(u => {
+                                    const canApprove = u.Status === 'Pending' && (currentUser.role === 'Admin' || (currentUser.role === 'BranchAdmin' && u.Role !== 'Admin' && u.Role !== 'BranchAdmin'));
+                                    const canEdit = currentUser.role === 'Admin' || (currentUser.role === 'BranchAdmin' && u.Role !== 'Admin' && u.Role !== 'BranchAdmin' && (u.Role === 'Contractor' || u.BranchID === currentUser.branchId));
+                                    const canResetPassword = canEdit; // Same logic as editing
+
+                                    return `
                                     <tr>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${u.Name}</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${u.Username}</td>
@@ -605,12 +689,12 @@
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${allBranches.find(b => b.BranchID === u.BranchID)?.BranchName || '-'}</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(u.Status)}">${u.Status}</span></td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-4">
-                                            ${(u.Status === 'Pending' && (currentUser.role === 'Admin' || u.Role !== 'BranchAdmin')) ? `<button onclick="handleUpdateUserStatus('${u.Username}', 'Active')" class="text-green-600 hover:text-green-900">อนุมัติ</button>` : ''}
-                                            ${(currentUser.role === 'Admin' || u.Role !== 'BranchAdmin') ? `<button onclick="openEditUserModal('${u.Username}', '${u.Role}', '${u.BranchID}')" class="text-indigo-600 hover:text-indigo-900">แก้ไข</button>` : ''}
-                                            ${(currentUser.role === 'Admin' || u.Role !== 'BranchAdmin') ? `<button onclick="handlePasswordReset('${u.Username}')" class="text-gray-500 hover:text-gray-800">รีเซ็ตรหัส</button>` : ''}
+                                            ${canApprove ? `<button onclick="handleUpdateUserStatus('${u.Username}', 'Active')" class="text-green-600 hover:text-green-900">อนุมัติ</button>` : ''}
+                                            ${canEdit ? `<button onclick="openEditUserModal('${u.Username}', '${u.Role}', '${u.BranchID}')" class="text-indigo-600 hover:text-indigo-900">แก้ไข</button>` : ''}
+                                            ${canResetPassword ? `<button onclick="handlePasswordReset('${u.Username}')" class="text-gray-500 hover:text-gray-800">รีเซ็ตรหัส</button>` : ''}
                                         </td>
                                     </tr>
-                                `).join('')}
+                                `}).join('')}
                             </tbody>
                         </table>
                     </div>
@@ -619,23 +703,45 @@
         }
         
         async function renderApproverPermitsPage(role) {
-            const data = await callAppsScript('getApproverDashboardData', { role });
             pageContent.innerHTML = `
                 <div class="bg-white p-6 rounded-lg shadow-md">
-                    <div id="permit-list" class="overflow-x-auto"></div>
+                    <div id="search-container"></div>
+                    <div id="permit-list" class="overflow-x-auto mt-4"></div>
                 </div>
             `;
-            renderPermitTable(data.permits);
+
+            const fetchAndRender = async (searchTerm = '', searchDate = '') => {
+                try {
+                    const data = await callAppsScript('getApproverDashboardData', { role, searchTerm, searchDate });
+                    renderPermitTable(data.permits);
+                } catch (error) {
+                    document.getElementById('permit-list').innerHTML = `<p class="text-red-500 text-center">เกิดข้อผิดพลาดในการโหลดข้อมูล</p>`;
+                }
+            };
+
+            renderSearchUI(document.getElementById('search-container'), fetchAndRender);
+            await fetchAndRender(); // Initial load
         }
 
         async function renderAllPermitsPage() {
-            const data = await callAppsScript('getAllPermitsData');
             pageContent.innerHTML = `
                 <div class="bg-white p-6 rounded-lg shadow-md">
-                    <div id="permit-list" class="overflow-x-auto"></div>
+                    <div id="search-container"></div>
+                    <div id="permit-list" class="overflow-x-auto mt-4"></div>
                 </div>
             `;
-            renderPermitTable(data.permits);
+            
+            const fetchAndRender = async (searchTerm = '', searchDate = '') => {
+                try {
+                    const data = await callAppsScript('getAllPermitsData', { searchTerm, searchDate });
+                    renderPermitTable(data.permits);
+                } catch (error) {
+                    document.getElementById('permit-list').innerHTML = `<p class="text-red-500 text-center">เกิดข้อผิดพลาดในการโหลดข้อมูล</p>`;
+                }
+            };
+
+            renderSearchUI(document.getElementById('search-container'), fetchAndRender);
+            await fetchAndRender(); // Initial load
         }
 
         async function renderContractorDashboardPage() {
@@ -670,50 +776,62 @@
         }
 
         async function renderContractorPermitsPage() {
-            await refreshContractorData();
-            const { permits } = contractorDataCache;
             pageContent.innerHTML = `
                 <div class="bg-white p-6 rounded-lg shadow-md">
                     <div class="flex justify-between items-center mb-4 border-b pb-2">
                        <h2 class="text-lg font-bold text-gray-700">ประวัติและยื่นคำขอ Work Permit</h2>
                        <button onclick="openNewPermitModal()" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700"><i class="fas fa-file-alt"></i> ยื่นคำขอใหม่</button>
                     </div>
-                    <div id="permit-history" class="overflow-x-auto"></div>
+                    <div id="search-container"></div>
+                    <div id="permit-history" class="overflow-x-auto mt-4"></div>
                 </div>`;
             
-            const permitHistory = document.getElementById('permit-history');
-            if (permits.length === 0) {
-                permitHistory.innerHTML = '<p class="text-center text-gray-500 py-4">ไม่พบประวัติการยื่นคำขอ</p>';
-                return;
-            }
-            permitHistory.innerHTML = `
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">วันที่ยื่น</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ผู้ประสานงานหลัก</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">สถานะ</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                        ${permits.map(p => `
-                            <tr class="hover:bg-gray-50 cursor-pointer" onclick="openPermitDetailModal('${p.PermitID}')">
-                                <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-800">${p.PermitID}</td>
-                                <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${new Date(p.RequestTimestamp).toLocaleDateString('th-TH')}</td>
-                                <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${getEmployeeName(p.PrimaryContactEmployeeID)}</td>
-                                <td class="px-4 py-4 whitespace-nowrap text-sm"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(p.Status)}">${p.Status}</span></td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            `;
+            const fetchAndRender = async (searchTerm = '', searchDate = '') => {
+                try {
+                    const data = await callAppsScript('getContractorPermits', { searchTerm, searchDate });
+                    const permitHistory = document.getElementById('permit-history');
+                    if (data.permits.length === 0) {
+                        permitHistory.innerHTML = '<p class="text-center text-gray-500 py-4">ไม่พบประวัติการยื่นคำขอที่ตรงกับเงื่อนไข</p>';
+                        return;
+                    }
+                    permitHistory.innerHTML = `
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">โครงการ</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">วันที่ยื่น</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ผู้ประสานงานหลัก</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">สถานะ</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                ${data.permits.map(p => `
+                                    <tr class="hover:bg-gray-50 cursor-pointer" onclick="openPermitDetailModal('${p.PermitID}')">
+                                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-800">${p.PermitID}</td>
+                                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${p.ProjectName}</td>
+                                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${new Date(p.RequestTimestamp).toLocaleDateString('th-TH')}</td>
+                                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${getEmployeeName(p.PrimaryContactEmployeeID)}</td>
+                                        <td class="px-4 py-4 whitespace-nowrap text-sm"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(p.Status)}">${p.Status}</span></td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                } catch (error) {
+                    document.getElementById('permit-history').innerHTML = `<p class="text-red-500 text-center">เกิดข้อผิดพลาดในการโหลดข้อมูล</p>`;
+                }
+            };
+
+            renderSearchUI(document.getElementById('search-container'), fetchAndRender);
+            await refreshContractorData(); // Still need this for employee names in the table
+            await fetchAndRender(); // Initial load
         }
 
         function renderPermitTable(permits) {
             const container = document.getElementById('permit-list');
              if (!permits || permits.length === 0) {
-                container.innerHTML = '<p class="text-center text-gray-500 py-4">ไม่พบรายการคำขอ</p>';
+                container.innerHTML = '<p class="text-center text-gray-500 py-4">ไม่พบรายการคำขอที่ตรงกับเงื่อนไข</p>';
                 return;
             }
             container.innerHTML = `
@@ -721,6 +839,7 @@
                     <thead class="bg-gray-50">
                         <tr>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">โครงการ</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">วันที่ยื่น</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ผู้รับเหมา</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">สถานะ</th>
@@ -731,6 +850,7 @@
                         ${permits.map(p => `
                             <tr>
                                 <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-800">${p.PermitID}</td>
+                                <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${p.ProjectName || 'N/A'}</td>
                                 <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${new Date(p.RequestTimestamp).toLocaleDateString('th-TH')}</td>
                                 <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${p.ContractorName || p.ContractorUsername}</td>
                                 <td class="px-4 py-4 whitespace-nowrap text-sm"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(p.Status)}">${p.Status}</span></td>
@@ -774,6 +894,23 @@
             });
         }
 
+        function createSafetyChecklistTable(checklistString) {
+            if (!checklistString) return '<p class="text-gray-500">ไม่มีข้อมูล</p>';
+
+            const lines = checklistString.split('\n');
+            let tableHtml = '<table class="min-w-full divide-y divide-gray-200 text-sm"><thead><tr><th class="px-2 py-2 text-left font-medium text-gray-600">หัวข้อการตรวจสอบ</th><th class="px-2 py-2 text-left font-medium text-gray-600">ผลการตรวจ</th></tr></thead><tbody class="bg-white divide-y divide-gray-200">';
+            
+            lines.forEach(line => {
+                const parts = line.split(':');
+                const question = parts.shift();
+                const answer = parts.join(':').trim();
+                tableHtml += `<tr><td class="px-2 py-2 align-top text-gray-700">${question}</td><td class="px-2 py-2 align-top font-medium text-gray-900">${answer}</td></tr>`;
+            });
+
+            tableHtml += '</tbody></table>';
+            return tableHtml;
+        }
+
         function renderPublicPermitDetails(permit) {
             const contentContainer = document.getElementById('permit-check-content');
             const formatTextarea = (text) => text ? String(text).replace(/\n/g, '<br>') : '-';
@@ -804,7 +941,7 @@
                         <div><h4 class="font-semibold text-gray-800 border-b pb-1">ลักษณะงาน</h4><p class="mt-1 text-gray-700 pl-2">${formatTextarea(permit.JobDescription)}</p></div>
                         <div><h4 class="font-semibold text-gray-800 border-b pb-1">รายชื่อผู้ปฏิบัติงาน</h4><p class="mt-1 text-gray-700 pl-2">${formatTextarea(permit.WorkerList)}</p></div>
                         <div><h4 class="font-semibold text-gray-800 border-b pb-1">อุปกรณ์ PPE</h4><p class="mt-1 text-gray-700 pl-2">${formatTextarea(permit.PPE)}</p></div>
-                        <div><h4 class="font-semibold text-gray-800 border-b pb-1">การตรวจสอบความปลอดภัย</h4><p class="mt-1 text-gray-700 pl-2">${formatTextarea(permit.SafetyChecklist)}</p></div>
+                        <div><h4 class="font-semibold text-gray-800 border-b pb-1">การตรวจสอบความปลอดภัย</h4><div class="mt-1 text-gray-700">${createSafetyChecklistTable(permit.SafetyChecklist)}</div></div>
                     </div>
                 </div>
                 
@@ -867,6 +1004,7 @@
         }
 
         async function openNewPermitModal() {
+            await refreshContractorData(); // Make sure projects/employees are up-to-date
             const { projects, employees } = contractorDataCache;
             if (projects.length === 0 || employees.length === 0) {
                 showAlert("กรุณาเพิ่มข้อมูลโครงการและพนักงานก่อนยื่นคำขอ", 'warning'); return;
@@ -988,7 +1126,7 @@
 
             if (canSectionManagerApprove || canGmApprove) {
                 actionButtons = `
-                    <div class="mt-6 pt-4 border-t">
+                    <div class="mt-6 pt-4 border-t no-print">
                         <h4 class="font-semibold text-gray-800 mb-2">การดำเนินการอนุมัติ (${currentUser.role})</h4>
                         <label for="rejectionReason" class="block text-sm font-medium text-gray-700">เหตุผล (กรณีไม่อนุมัติ)</label>
                         <textarea id="rejectionReason" rows="2" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></textarea>
@@ -1001,7 +1139,21 @@
 
             let qrCodeSection = '';
             if (permit.Status === 'Approved') {
-                qrCodeSection = `<div class="mt-4 text-center"><h4 class="font-semibold text-gray-700">Work Permit QR Code</h4><div id="qrcode" class="mt-2 inline-block p-2 border rounded-md"></div></div>`;
+                qrCodeSection = `
+                    <div class="mt-4 text-center">
+                        <h4 class="font-semibold text-gray-700">Work Permit QR Code</h4>
+                        <div id="qrcode-container" class="mt-2 inline-block p-2 border rounded-md bg-white">
+                            <div id="qrcode"></div>
+                        </div>
+                        <div class="mt-4 flex justify-center space-x-3 no-print">
+                            <button onclick="handleDownloadQR('${permitId}')" class="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700">
+                                <i class="fas fa-download"></i> ดาวน์โหลด QR
+                            </button>
+                            <button onclick="window.print()" class="bg-gray-600 text-white px-4 py-2 rounded-md text-sm hover:bg-gray-700">
+                                <i class="fas fa-print"></i> พิมพ์
+                            </button>
+                        </div>
+                    </div>`;
             }
 
             const formatTextarea = (text) => text ? String(text).replace(/\n/g, '<br>') : '-';
@@ -1028,7 +1180,7 @@
                         <div><h4 class="font-semibold text-gray-800 border-b pb-1">ลักษณะงาน</h4><p class="mt-1 text-gray-700 pl-2">${formatTextarea(permit.JobDescription)}</p></div>
                         <div><h4 class="font-semibold text-gray-800 border-b pb-1">รายชื่อผู้ปฏิบัติงาน</h4><p class="mt-1 text-gray-700 pl-2">${formatTextarea(permit.WorkerList)}</p></div>
                         <div><h4 class="font-semibold text-gray-800 border-b pb-1">อุปกรณ์ PPE</h4><p class="mt-1 text-gray-700 pl-2">${formatTextarea(permit.PPE)}</p></div>
-                        <div><h4 class="font-semibold text-gray-800 border-b pb-1">การตรวจสอบความปลอดภัย</h4><p class="mt-1 text-gray-700 pl-2">${formatTextarea(permit.SafetyChecklist)}</p></div>
+                        <div><h4 class="font-semibold text-gray-800 border-b pb-1">การตรวจสอบความปลอดภัย</h4><div class="mt-1 text-gray-700">${createSafetyChecklistTable(permit.SafetyChecklist)}</div></div>
                     </div>
                 </div>
                 
@@ -1063,7 +1215,14 @@
         }
 
         function openEditUserModal(username, currentRole, currentBranchId) {
-            const roleOptions = ['Contractor', 'SectionManager', 'GM', 'BranchAdmin', 'Admin']
+            let availableRoles = [];
+            if (currentUser.role === 'Admin') {
+                availableRoles = ['Contractor', 'SectionManager', 'GM', 'BranchAdmin', 'Admin'];
+            } else if (currentUser.role === 'BranchAdmin') {
+                availableRoles = ['Contractor', 'SectionManager', 'GM'];
+            }
+
+            const roleOptions = availableRoles
                 .map(role => `<option value="${role}" ${role === currentRole ? 'selected' : ''}>${role}</option>`).join('');
             
             const branchOptions = branchesCache
@@ -1080,7 +1239,7 @@
                     </div>
                     <div>
                         <label for="edit-user-branch" class="block text-sm font-medium text-gray-700">สาขา</label>
-                        <select id="edit-user-branch" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                        <select id="edit-user-branch" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" ${currentUser.role === 'BranchAdmin' && currentRole !== 'Contractor' ? 'disabled' : ''}>
                             <option value="">-- ไม่มี --</option>
                             ${branchOptions}
                         </select>
@@ -1168,10 +1327,23 @@
 
         document.getElementById('register-role').addEventListener('change', function(e) {
             const branchSelector = document.getElementById('branch-selection-wrapper');
-            if (this.value !== 'Contractor') {
-                branchSelector.classList.remove('hidden');
-            } else {
+            const nameInput = document.getElementById('register-name');
+            const nameIcon = document.querySelector('#register-name-wrapper .fa-solid');
+
+            if (this.value === 'Contractor') {
                 branchSelector.classList.add('hidden');
+                nameInput.placeholder = 'ชื่อบริษัทผู้รับเหมา';
+                if (nameIcon) {
+                    nameIcon.classList.remove('fa-id-card');
+                    nameIcon.classList.add('fa-building');
+                }
+            } else {
+                branchSelector.classList.remove('hidden');
+                nameInput.placeholder = 'ชื่อ-นามสกุล';
+                 if (nameIcon) {
+                    nameIcon.classList.remove('fa-building');
+                    nameIcon.classList.add('fa-id-card');
+                }
             }
         });
 
@@ -1277,19 +1449,14 @@
             const safetyChecklistResults = [];
             const questions = document.querySelectorAll('#safety-checklist-options .checklist-item');
             questions.forEach((q, index) => {
-                // The last item is the textarea, so we only process radio buttons up to index 12 (13 items)
-                if (index < 13) {
-                    const questionText = q.querySelector('label').textContent;
-                    const selectedValue = q.querySelector(`input[name="safety-q${index+1}"]:checked`)?.value || 'ยังไม่เลือก';
-                    safetyChecklistResults.push(`${questionText}: ${selectedValue}`);
+                if (index < 13) { // The 13 radio button questions
+                    const selectedValue = q.querySelector(`input[name="safety-q${index+1}"]:checked`)?.value || 'N/A';
+                    safetyChecklistResults.push(selectedValue);
                 }
             });
-
-            // Add the text from question 14
+            // Handle the 14th item (textarea)
             const q14Text = document.getElementById('safety-q14-text').value;
-            if (q14Text) {
-                 safetyChecklistResults.push(`14. กรณีผลการตรวจ ไม่ใช่ ให้ระบุมาตรการการควบคุม: ${q14Text}`);
-            }
+            safetyChecklistResults.push(q14Text || 'N/A');
 
 
             const permitData = {
@@ -1305,7 +1472,7 @@
                 numWorkers: document.getElementById('permitNumWorkers').value,
                 workerList: document.getElementById('permitWorkerList').value,
                 ppe: document.getElementById('permitPPE').value,
-                safetyChecklist: safetyChecklistResults.join('\n'),
+                safetyChecklist: safetyChecklistResults, // Pass as an array of answers
             };
             await callAppsScript('submitWorkPermit', { permitData });
             if (!isDemoMode) {
@@ -1337,6 +1504,44 @@
                     navigateTo(`${currentUser.role.toLowerCase()}-permits`);
                 }
             }
+        }
+
+        function handleDownloadQR(permitId) {
+            const qrCodeElement = document.getElementById('qrcode');
+            if (!qrCodeElement) { showAlert('ไม่พบ QR Code', 'error'); return; }
+            const qrCodeImage = qrCodeElement.querySelector('img');
+            if (!qrCodeImage) { showAlert('ไม่พบรูปภาพ QR Code', 'error'); return; }
+
+            const canvas = document.createElement('canvas');
+            const padding = 20;
+            const textHeight = 30;
+            const qrSize = qrCodeImage.width;
+            
+            canvas.width = qrSize + (padding * 2);
+            canvas.height = qrSize + (padding * 2) + textHeight;
+            
+            const ctx = canvas.getContext('2d');
+            
+            // White background
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw QR Code
+            ctx.drawImage(qrCodeImage, padding, padding, qrSize, qrSize);
+            
+            // Draw Permit ID text
+            ctx.fillStyle = 'black';
+            ctx.font = '16px Kanit, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(permitId, canvas.width / 2, qrSize + padding + 20);
+
+            // Trigger download
+            const link = document.createElement('a');
+            link.href = canvas.toDataURL('image/png');
+            link.download = `work-permit-qr-${permitId}.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
 
         // --- Permit Checker Functions ---
@@ -1458,7 +1663,7 @@
                 "ได้มีการปิดกั้นพื้นที่บริเวณปฏิบัติงาน หรือใช้กรวยขวาง พร้อมทั้งติดป้ายเตือนอันตรายต่างๆแล้ว",
                 "ได้รับอนุญาติการใช้ไฟฟ้า และมีตู้ไไฟฟ้าย่อยหรือการต่อพ่วงเต้าเสียบจากเจ้าหน้าที่ไฟฟ้าแล้ว",
                 "ก่อนลงมือปฏิบัติงานมีการตรวจสอบความปลอดภัยก่อนทุกครั้ง เช่น ตรวจพื้นที่การทำงาน เครื่องจักร เครื่องมือ เครื่องใช้ไฟฟ้า จะต้องอยู่ในสภาพพร้อมใช้งาน และปลอดภัย",
-                "มีการตัดกระแสไฟฟ้า/ปิดเครื่องจักรที่อาจก่อให้เกิดอันตรายขณะปฏิบัติงานพร้อมทั้งติดตั้งป้ายผู้不เกี่ยวข้อง\"ห้ามเปิด/เดินเครื่องเด็ดขาด\"",
+                "มีการตัดกระแสไฟฟ้า/ปิดเครื่องจักรที่อาจก่อให้เกิดอันตรายขณะปฏิบัติงานพร้อมทั้งติดตั้งป้ายผู้ไม่เกี่ยวข้อง\"ห้ามเปิด/เดินเครื่องเด็ดขาด\"",
                 "พื้นที่ปฏิบัติงานอยู่ในพื้นที่ที่ปลอดภัย /อากาศถ่ายเท หรือมีการระบายอากาศที่เพียงพอ",
                 "ได้รับการอบรมความปลอดภัย/ได้รับการแจ้งเตือนอันตราย และมาตรการควบคุม หรือวิธีป้องกันอันตรายให้กับให้กับผู้ปฏิบัติงานทุกคนทราบ",
                 "กรณีปฏิบัติงานในที่อับอากาศผู้ปฏิบัติต้องเป็นผู้ที่ผ่านการฝึกอบรมตามที่กฎหมายกำหนด",
