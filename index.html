@@ -1171,8 +1171,14 @@
             const safeFormatDate = (dateStr) => dateStr ? new Date(dateStr).toLocaleDateString('th-TH') : '-';
             const safeFormatDateTime = (dateStr) => dateStr ? new Date(dateStr).toLocaleString('th-TH') : '-';
 
-            const contractorCloseoutInfo = (permit.Contractor_Closeout_Timestamp) ? `
-                <div class="mt-6 pt-4 border-t">
+            // <<< UPDATED: Build the closeout section dynamically based on status
+            let closeoutSection = '';
+            const showContractorCloseout = ['Pending SM Close-out', 'Pending GM Close-out', 'Closed'].includes(permit.Status);
+            const showSmCloseout = ['Pending GM Close-out', 'Closed'].includes(permit.Status);
+            const showGmCloseout = permit.Status === 'Closed';
+
+            const contractorInfo = showContractorCloseout ? `
+                <div class="pt-4 mt-4 border-t">
                     <h4 class="font-semibold text-gray-800 mb-2">ข้อมูลการปิดงาน (ผู้รับเหมา)</h4>
                     <div class="space-y-1 text-sm">
                         <div><strong class="text-gray-600 w-32 inline-block">วันที่/เวลาสิ้นสุด:</strong> ${safeFormatDate(permit.Contractor_Actual_End_Date)} ${permit.Contractor_Actual_End_Time || ''}</div>
@@ -1182,8 +1188,8 @@
                 </div>
             ` : '';
 
-            const smCloseoutInfo = (permit.SM_Closeout_Timestamp) ? `
-                <div class="mt-6 pt-4 border-t">
+            const smInfo = showSmCloseout ? `
+                <div class="pt-4 mt-4 border-t">
                     <h4 class="font-semibold text-gray-800 mb-2">ผลการประเมิน (Section Manager)</h4>
                     <div class="space-y-1 text-sm">
                         <div><strong class="text-gray-600 w-32 inline-block">ผลการประเมิน:</strong> ${permit.SM_Evaluation || '-'}</div>
@@ -1192,6 +1198,28 @@
                     </div>
                 </div>
             ` : '';
+
+            const gmInfo = showGmCloseout ? `
+                <div class="pt-4 mt-4 border-t">
+                    <h4 class="font-semibold text-gray-800 mb-2">ผลการอนุมัติปิดงาน (General Manager)</h4>
+                    <div class="space-y-1 text-sm">
+                        <div><strong class="text-gray-600 w-32 inline-block">สถานะ:</strong> ${permit.GM_Closeout_Status || '-'}</div>
+                        <div><strong class="text-gray-600 w-32 inline-block">ผู้อนุมัติ:</strong> ${permit.GM_Closeout_ApproverName || permit.GM_Closeout_ApproverUsername || '-'}</div>
+                        <div><strong class="text-gray-600 w-32 inline-block">วันที่อนุมัติ:</strong> ${safeFormatDateTime(permit.GM_Closeout_Timestamp)}</div>
+                    </div>
+                </div>
+            ` : '';
+
+            if (showContractorCloseout) { // The main condition is now just this
+                closeoutSection = `
+                    <div class="mt-6">
+                        <h3 class="text-lg font-bold text-gray-900 border-b pb-2">สถานะการปิดงาน</h3>
+                        ${contractorInfo}
+                        ${smInfo}
+                        ${gmInfo}
+                    </div>
+                `;
+            }
 
 
             const content = `
@@ -1243,8 +1271,7 @@
                 </div>
 
                 <!-- Display close-out info -->
-                ${contractorCloseoutInfo}
-                ${smCloseoutInfo}
+                ${closeoutSection}
                 
                 ${qrCodeSection}
                 ${actionButtons}`;
