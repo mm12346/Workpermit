@@ -896,7 +896,65 @@
         function renderPublicPermitDetails(permit) {
             const contentContainer = document.getElementById('permit-check-content');
             const formatTextarea = (text) => text ? String(text).replace(/\n/g, '<br>') : '-';
+            const safeFormatDate = (dateStr) => dateStr ? new Date(dateStr).toLocaleDateString('th-TH') : '-';
+            const safeFormatDateTime = (dateStr) => dateStr ? new Date(dateStr).toLocaleString('th-TH') : '-';
+            const safeFormatTime = (timeStr) => {
+                if (!timeStr) return '';
+                try {
+                    const date = new Date(timeStr);
+                    if (isNaN(date.getTime())) return '';
+                    return date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+                } catch (e) {
+                    return '';
+                }
+            };
+
+            // Build the closeout section dynamically
+            let closeoutSection = '';
+            const showContractorCloseout = ['Pending SM Close-out', 'Pending GM Close-out', 'Closed'].includes(permit.Status);
+            const showSmCloseout = ['Pending GM Close-out', 'Closed'].includes(permit.Status);
+            const showGmCloseout = permit.Status === 'Closed';
+
+            const contractorInfo = showContractorCloseout ? `
+                <div class="pt-4 mt-4 border-t">
+                    <h4 class="font-semibold text-gray-800 mb-2">ข้อมูลการปิดงาน (ผู้รับเหมา)</h4>
+                    <div class="space-y-1 text-sm">
+                        <div><strong class="text-gray-600 w-32 inline-block">วันที่/เวลาสิ้นสุด:</strong> ${safeFormatDate(permit.Contractor_Actual_End_Date)} ${safeFormatTime(permit.Contractor_Actual_End_Time)}</div>
+                        <div><strong class="text-gray-600 w-32 inline-block">สภาพพื้นที่:</strong> ${permit.Contractor_Condition || '-'}</div>
+                        <div><strong class="text-gray-600 w-32 inline-block">วันที่ส่ง:</strong> ${safeFormatDateTime(permit.Contractor_Closeout_Timestamp)}</div>
+                    </div>
+                </div>` : '';
             
+            const smInfo = showSmCloseout ? `
+                <div class="pt-4 mt-4 border-t">
+                    <h4 class="font-semibold text-gray-800 mb-2">ผลการประเมิน (Section Manager)</h4>
+                    <div class="space-y-1 text-sm">
+                        <div><strong class="text-gray-600 w-32 inline-block">ผลการประเมิน:</strong> ${permit.SM_Evaluation || '-'}</div>
+                        <div><strong class="text-gray-600 w-32 inline-block">ผู้ประเมิน:</strong> ${permit.SM_Closeout_ApproverName || permit.SM_Closeout_ApproverUsername || '-'}</div>
+                        <div><strong class="text-gray-600 w-32 inline-block">วันที่ประเมิน:</strong> ${safeFormatDateTime(permit.SM_Closeout_Timestamp)}</div>
+                    </div>
+                </div>` : '';
+
+            const gmInfo = showGmCloseout ? `
+                <div class="pt-4 mt-4 border-t">
+                    <h4 class="font-semibold text-gray-800 mb-2">ผลการอนุมัติปิดงาน (General Manager)</h4>
+                    <div class="space-y-1 text-sm">
+                        <div><strong class="text-gray-600 w-32 inline-block">สถานะ:</strong> ${permit.GM_Closeout_Status || '-'}</div>
+                        <div><strong class="text-gray-600 w-32 inline-block">ผู้อนุมัติ:</strong> ${permit.GM_Closeout_ApproverName || permit.GM_Closeout_ApproverUsername || '-'}</div>
+                        <div><strong class="text-gray-600 w-32 inline-block">วันที่อนุมัติ:</strong> ${safeFormatDateTime(permit.GM_Closeout_Timestamp)}</div>
+                    </div>
+                </div>` : '';
+
+            if (showContractorCloseout) {
+                closeoutSection = `
+                    <div class="mt-6">
+                        <h3 class="text-lg font-bold text-gray-900 border-b pb-2">สถานะการปิดงาน</h3>
+                        ${contractorInfo}
+                        ${smInfo}
+                        ${gmInfo}
+                    </div>`;
+            }
+
             contentContainer.innerHTML = `
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-2xl font-bold text-gray-800">รายละเอียด Work Permit</h2>
@@ -912,7 +970,7 @@
                             <div><strong class="text-gray-600 w-32 inline-block">โครงการ:</strong>${permit.ProjectName}</div>
                             <div><strong class="text-gray-600 w-32 inline-block">สาขา:</strong>${permit.BranchName}</div>
                             <div><strong class="text-gray-600 w-32 inline-block">เวลา:</strong>${permit.WorkTime}</div>
-                            <div><strong class="text-gray-600 w-32 inline-block">วันที่ปฏิบัติงาน:</strong>${new Date(permit.StartDate).toLocaleDateString('th-TH')} - ${new Date(permit.EndDate).toLocaleDateString('th-TH')}</div>
+                            <div><strong class="text-gray-600 w-32 inline-block">วันที่ปฏิบัติงาน:</strong>${safeFormatDate(permit.StartDate)} - ${safeFormatDate(permit.EndDate)}</div>
                             <div><strong class="text-gray-600 w-32 inline-block">ผู้ประสานงานหลัก:</strong>${permit.PrimaryContactEmployeeName}</div>
                             <div><strong class="text-gray-600 w-32 inline-block">จำนวนคน:</strong>${permit.NumWorkers} คน</div>
                         </div>
@@ -934,7 +992,7 @@
                         <div class="space-y-1 text-sm">
                             <div><strong class="text-gray-600 w-24 inline-block">สถานะ:</strong> <span class="${getStatusClass(permit.SectionManager_Status)} px-2 py-0.5 rounded-full text-xs">${permit.SectionManager_Status || 'N/A'}</span></div>
                             <div><strong class="text-gray-600 w-24 inline-block">ผู้อนุมัติ:</strong> ${permit.SectionManager_ApproverName || permit.SectionManager_ApproverUsername || '-'}</div>
-                            <div><strong class="text-gray-600 w-24 inline-block">วันที่:</strong> ${permit.SectionManager_ApprovalTimestamp ? new Date(permit.SectionManager_ApprovalTimestamp).toLocaleString('th-TH') : '-'}</div>
+                            <div><strong class="text-gray-600 w-24 inline-block">วันที่:</strong> ${safeFormatDateTime(permit.SectionManager_ApprovalTimestamp)}</div>
                             <div><strong class="text-gray-600 w-24 inline-block">เหตุผล:</strong> ${permit.SectionManager_Reason || '-'}</div>
                         </div>
                     </div>
@@ -943,11 +1001,13 @@
                         <div class="space-y-1 text-sm">
                             <div><strong class="text-gray-600 w-24 inline-block">สถานะ:</strong> <span class="${getStatusClass(permit.GM_Status)} px-2 py-0.5 rounded-full text-xs">${permit.GM_Status || 'N/A'}</span></div>
                             <div><strong class="text-gray-600 w-24 inline-block">ผู้อนุมัติ:</strong> ${permit.GM_ApproverName || permit.GM_ApproverUsername || '-'}</div>
-                            <div><strong class="text-gray-600 w-24 inline-block">วันที่:</strong> ${permit.GM_ApprovalTimestamp ? new Date(permit.GM_ApprovalTimestamp).toLocaleString('th-TH') : '-'}</div>
+                            <div><strong class="text-gray-600 w-24 inline-block">วันที่:</strong> ${safeFormatDateTime(permit.GM_ApprovalTimestamp)}</div>
                             <div><strong class="text-gray-600 w-24 inline-block">เหตุผล:</strong> ${permit.GM_Reason || '-'}</div>
                         </div>
                     </div>
                 </div>
+
+                ${closeoutSection}
             `;
             showPermitCheckResultView();
         }
