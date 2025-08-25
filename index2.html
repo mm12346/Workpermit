@@ -1,0 +1,2060 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Work Permit Management</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
+    <!-- QR Code Generator Library -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <!-- QR Code Scanner Library -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <style>
+        /* Custom styles */
+        @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap');
+        body {
+            font-family: 'Kanit', sans-serif;
+            background-color: #f0f2f5;
+        }
+        .hidden { display: none; }
+        .loader {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #166534; /* Dark Green */
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .status-pending-hr, .status-pending { background-color: #fef3c7; color: #92400e; }
+        .status-pending-gm { background-color: #dbeafe; color: #1e40af; }
+        .status-approved, .status-active { background-color: #d1fae5; color: #065f46; }
+        .status-rejected { background-color: #fee2e2; color: #991b1b; }
+        .status-closed { background-color: #e5e7eb; color: #4b5563; }
+        
+        /* Sidebar styles */
+        #sidebar {
+            transition: transform 0.3s ease-in-out;
+        }
+        #main-content-wrapper {
+            transition: margin-left 0.3s ease-in-out;
+        }
+        .sidebar-link.active {
+            background-color: #166534; /* Darker Green */
+            color: white;
+        }
+        /* Custom modal transition */
+        #alert-modal-content {
+            transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+        }
+        #qr-reader {
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        /* A class to hide elements when printing the main screen, but not the report */
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <!-- Main Container -->
+    <div id="app" class="w-full">
+
+        <!-- Loading Overlay -->
+        <div id="loading-overlay" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="loader"></div>
+        </div>
+        
+        <!-- Login Section -->
+        <div id="login-section" class="hidden min-h-screen flex items-center justify-center">
+            <div class="max-w-sm mx-auto p-4 w-full">
+                <!-- Logo -->
+                <div class="text-center mb-8">
+                    <svg class="h-20 w-auto mx-auto" viewBox="0 0 100 100" fill="#14532d">
+                       <path d="M50,5A45,45,0,1,1,5,50,45,45,0,0,1,50,5M50,0a50,50,0,1,0,50,50A50,50,0,0,0,50,0Z"/>
+                       <path d="M50,25a8,8,0,0,1,8,8v8a8,8,0,0,1-16,0v-8a8,8,0,0,1,8-8m0-5a13,13,0,0,0-13,13v8a13,13,0,0,0,26,0v-8A13,13,0,0,0,50,20Z"/>
+                       <path d="M50,55a20,20,0,0,1,20,20v5a0,0,0,0,1,0,0H30a0,0,0,0,1,0,0v-5a20,20,0,0,1,20-20m0-5a25,25,0,0,0-25,25v5a5,5,0,0,0,5,5H70a5,5,0,0,0,5-5v-5A25,25,0,0,0,50,50Z"/>
+                    </svg>
+                    <h2 class="text-2xl font-bold text-gray-700 mt-2">WORK PERMIT</h2>
+                </div>
+
+                <!-- Login Form -->
+                <div class="bg-green-800 rounded-2xl shadow-xl p-8 text-white">
+                    <h1 class="text-xl font-bold text-center mb-6">ระบบจัดการใบขออนุญาตทำงาน</h1>
+                    <form id="login-form">
+                         <div class="mb-4">
+                            <select class="w-full bg-white text-gray-800 rounded-md py-2 px-3 focus:outline-none">
+                                <option>Sritrang Log in</option>
+                            </select>
+                        </div>
+                        <div class="relative mb-4">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3"><i class="fa-solid fa-user text-gray-400"></i></span>
+                            <input type="text" id="username" placeholder="Username" class="w-full bg-white text-gray-800 rounded-md py-2 pl-10 pr-3 focus:outline-none" required>
+                        </div>
+                        <div class="relative mb-6">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3"><i class="fa-solid fa-lock text-gray-400"></i></span>
+                            <input type="password" id="password" placeholder="Password" class="w-full bg-white text-gray-800 rounded-md py-2 pl-10 pr-3 focus:outline-none" required>
+                        </div>
+                        <button type="submit" class="w-full bg-white text-green-800 font-bold py-2 px-4 rounded-full hover:bg-gray-200 transition duration-300">Login</button>
+                        <div class="text-center text-sm mt-4">
+                            <a href="#" id="show-forgot-password-link" class="hover:underline">ลืมรหัสผ่าน</a><span class="mx-2">|</span><a href="#" id="show-register-link" class="hover:underline">ลงทะเบียน</a>
+                        </div>
+                        <p id="login-error" class="text-red-400 text-xs italic mt-4 text-center"></p>
+                    </form>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Registration Section -->
+        <div id="register-section" class="hidden min-h-screen flex items-center justify-center">
+            <div class="max-w-sm mx-auto p-4 w-full">
+                 <div class="text-center mb-8">
+                    <h2 class="text-3xl font-bold text-gray-700">สร้างบัญชีใหม่</h2>
+                </div>
+                <div class="bg-white rounded-2xl shadow-xl p-8">
+                    <form id="register-form">
+                        <div class="relative mb-4">
+                             <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none"><i class="fa-solid fa-user-gear text-gray-400"></i></span>
+                             <select id="register-role" class="w-full bg-gray-100 text-gray-800 rounded-md py-2 pl-10 pr-10 focus:outline-none appearance-none" required>
+                                <option value="" disabled selected>เลือกบทบาท</option>
+                                <option value="Contractor">ผู้รับเหมา (Contractor)</option>
+                                <option value="SectionManager">Section Manager</option>
+                                <option value="GM">ผู้จัดการ (GM)</option>
+                                <option value="BranchAdmin">Admin ประจำสาขา</option>
+                            </select>
+                            <span class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none"><i class="fa-solid fa-chevron-down text-gray-400"></i></span>
+                        </div>
+                        <div id="register-name-wrapper" class="relative mb-4">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3"><i class="fa-solid fa-id-card text-gray-400"></i></span>
+                            <input type="text" id="register-name" placeholder="ชื่อ-นามสกุล" class="w-full bg-gray-100 text-gray-800 rounded-md py-2 pl-10 pr-3 focus:outline-none" required>
+                        </div>
+                        <div class="relative mb-4">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3"><i class="fa-solid fa-user-circle text-gray-400"></i></span>
+                            <input type="text" id="register-username" placeholder="Username" class="w-full bg-gray-100 text-gray-800 rounded-md py-2 pl-10 pr-3 focus:outline-none" required>
+                        </div>
+                        <div class="relative mb-4">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3"><i class="fa-solid fa-phone text-gray-400"></i></span>
+                            <input type="tel" id="register-phone" placeholder="เบอร์โทรศัพท์" class="w-full bg-gray-100 text-gray-800 rounded-md py-2 pl-10 pr-3 focus:outline-none" required>
+                        </div>
+                        <div class="relative mb-4">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3"><i class="fa-solid fa-lock text-gray-400"></i></span>
+                            <input type="password" id="register-password" placeholder="รหัสผ่าน (อย่างน้อย 4 ตัว)" class="w-full bg-gray-100 text-gray-800 rounded-md py-2 pl-10 pr-3 focus:outline-none" required>
+                        </div>
+                         <div class="relative mb-4">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3"><i class="fa-solid fa-check-double text-gray-400"></i></span>
+                            <input type="password" id="register-confirm-password" placeholder="ยืนยันรหัสผ่าน" class="w-full bg-gray-100 text-gray-800 rounded-md py-2 pl-10 pr-3 focus:outline-none" required>
+                        </div>
+                        <div id="branch-selection-wrapper" class="relative mb-6 hidden">
+                             <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none"><i class="fa-solid fa-building text-gray-400"></i></span>
+                             <select id="register-branch" class="w-full bg-gray-100 text-gray-800 rounded-md py-2 pl-10 pr-10 focus:outline-none appearance-none">
+                                <option value="" disabled selected>เลือกสาขา</option>
+                            </select>
+                            <span class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none"><i class="fa-solid fa-chevron-down text-gray-400"></i></span>
+                        </div>
+                        <button type="submit" class="w-full bg-green-700 text-white font-bold py-2 px-4 rounded-full hover:bg-green-800 transition duration-300">ลงทะเบียน</button>
+                        <div class="text-center text-sm mt-4">
+                           <a href="#" id="show-login-link" class="text-gray-600 hover:underline">มีบัญชีอยู่แล้ว? เข้าสู่ระบบ</a>
+                        </div>
+                        <p id="register-error" class="text-red-500 text-xs italic mt-4 text-center"></p>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Forgot Password Section -->
+        <div id="forgot-password-section" class="hidden min-h-screen flex items-center justify-center">
+            <div class="max-w-sm mx-auto p-4 w-full">
+                 <div class="text-center mb-8">
+                    <h2 class="text-3xl font-bold text-gray-700">ลืมรหัสผ่าน</h2>
+                </div>
+                <div class="bg-white rounded-2xl shadow-xl p-8">
+                    <form id="forgot-password-form">
+                        <p class="text-center text-gray-600 text-sm mb-6">กรุณากรอก Username และเบอร์โทรศัพท์ที่ลงทะเบียนไว้เพื่อค้นหารหัสผ่านของคุณ</p>
+                        <div class="relative mb-4">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3"><i class="fa-solid fa-user-circle text-gray-400"></i></span>
+                            <input type="text" id="forgot-username" placeholder="Username" class="w-full bg-gray-100 text-gray-800 rounded-md py-2 pl-10 pr-3 focus:outline-none" required>
+                        </div>
+                        <div class="relative mb-6">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3"><i class="fa-solid fa-phone text-gray-400"></i></span>
+                            <input type="tel" id="forgot-phone" placeholder="เบอร์โทรศัพท์" class="w-full bg-gray-100 text-gray-800 rounded-md py-2 pl-10 pr-3 focus:outline-none" required>
+                        </div>
+                        <button type="submit" class="w-full bg-green-700 text-white font-bold py-2 px-4 rounded-full hover:bg-green-800 transition duration-300">ค้นหารหัสผ่าน</button>
+                        <div class="text-center text-sm mt-4">
+                           <a href="#" id="show-login-link-from-forgot" class="text-gray-600 hover:underline">กลับไปหน้าเข้าสู่ระบบ</a>
+                        </div>
+                        <p id="forgot-error" class="text-red-500 text-xs italic mt-4 text-center"></p>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Permit Check Result Section -->
+        <div id="permit-check-section" class="hidden min-h-screen bg-gray-100 p-4 md:p-8">
+            <div id="permit-check-content" class="max-w-4xl mx-auto bg-white rounded-lg shadow-xl p-6">
+                <!-- Permit details will be rendered here -->
+            </div>
+        </div>
+
+        <!-- App Layout (Sidebar + Content) -->
+        <div id="app-layout" class="hidden">
+            <!-- Sidebar -->
+            <aside id="sidebar" class="bg-green-800 text-green-100 w-64 min-h-screen fixed top-0 left-0 transform -translate-x-full md:translate-x-0 z-30 no-print">
+                <div class="p-4 text-center border-b border-green-700">
+                    <h2 class="text-2xl font-bold text-white">WORK PERMIT</h2>
+                    <p id="sidebar-role" class="text-sm text-green-300"></p>
+                </div>
+                <nav id="sidebar-menu" class="p-4 space-y-2"></nav>
+            </aside>
+
+            <!-- Main Content Wrapper -->
+            <div id="main-content-wrapper" class="md:ml-64">
+                <!-- Header -->
+                <header class="bg-white shadow-md p-4 flex justify-between items-center sticky top-0 z-20 no-print">
+                    <button id="menu-toggle-btn" class="md:hidden text-gray-600">
+                        <i class="fas fa-bars text-xl"></i>
+                    </button>
+                    <h1 id="page-title" class="text-xl font-semibold text-gray-800">Dashboard</h1>
+                    <div class="flex items-center space-x-4">
+                         <div class="text-right">
+                            <p id="user-name" class="font-medium text-sm text-gray-700"></p>
+                            <p id="user-username" class="text-xs text-gray-500"></p>
+                         </div>
+                        <button id="logout-btn" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-full text-sm">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </button>
+                    </div>
+                </header>
+                <!-- Page Content -->
+                <main id="page-content" class="p-4 md:p-6"></main>
+            </div>
+        </div>
+
+
+        <!-- Generic Modal for Forms -->
+        <div id="generic-modal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-40 no-print">
+            <div class="modal-content relative top-10 mx-auto p-5 border w-full max-w-3xl shadow-lg rounded-md bg-white">
+                 <div class="flex justify-between items-center pb-3 border-b">
+                    <h3 id="modal-title" class="text-2xl font-bold text-gray-800">Modal Title</h3>
+                    <div class="modal-close cursor-pointer z-50" onclick="closeModal()">
+                        <svg class="fill-current text-black" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18">
+                            <path d="M14.53 4.53l-1.06-1.06L9 7.94 4.53 3.47 3.47 4.53 7.94 9l-4.47 4.47 1.06 1.06L9 10.06l4.47 4.47 1.06-1.06L10.06 9z"></path>
+                        </svg>
+                    </div>
+                </div>
+                <div id="modal-body" class="mt-4 max-h-[75vh] overflow-y-auto pr-2">
+                    <!-- Modal content goes here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Alert/Confirm Modal -->
+        <div id="alert-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+            <div id="alert-modal-content" class="bg-white rounded-lg shadow-xl w-full max-w-sm transform transition-all opacity-0 translate-y-4">
+                <div class="p-6 text-center">
+                    <div id="alert-modal-icon" class="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center text-4xl">
+                        <!-- Icon goes here -->
+                    </div>
+                    <h3 id="alert-modal-title" class="text-lg font-medium text-gray-900"></h3>
+                    <p id="alert-modal-message" class="mt-2 text-sm text-gray-600"></p>
+                    <div id="alert-modal-prompt-input-wrapper" class="hidden mt-4">
+                         <input type="password" id="alert-modal-prompt-input" class="w-full bg-gray-100 text-gray-800 rounded-md py-2 px-3 focus:outline-none border border-gray-300" />
+                    </div>
+                </div>
+                <div id="alert-modal-buttons" class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse rounded-b-lg">
+                    <!-- Buttons go here -->
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- Configuration ---
+        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyWmhYQXVRSQvq03C_6ukEMUJn5fYGF7yyu6iFayrYRuzGFxEnBxk-1CKuTngaUd9Y/exec'; // <<-- ใส่ URL ของ Apps Script ที่ Deploy แล้ว
+
+        // --- Global State ---
+        let currentUser = null;
+        let contractorDataCache = null;
+        let branchesCache = [];
+        let isDemoMode = false;
+        let html5QrCode = null; // To hold the scanner instance
+
+        // --- DOM Elements ---
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const loginSection = document.getElementById('login-section');
+        const registerSection = document.getElementById('register-section');
+        const forgotPasswordSection = document.getElementById('forgot-password-section');
+        const permitCheckSection = document.getElementById('permit-check-section');
+        const appLayout = document.getElementById('app-layout');
+        const pageContent = document.getElementById('page-content');
+        const pageTitle = document.getElementById('page-title');
+        const modal = document.getElementById('generic-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalBody = document.getElementById('modal-body');
+        
+        // --- Custom Alert/Prompt Modal Elements ---
+        const alertModal = document.getElementById('alert-modal');
+        const alertModalContent = document.getElementById('alert-modal-content');
+        const alertModalIcon = document.getElementById('alert-modal-icon');
+        const alertModalTitle = document.getElementById('alert-modal-title');
+        const alertModalMessage = document.getElementById('alert-modal-message');
+        const alertModalButtons = document.getElementById('alert-modal-buttons');
+        const alertModalPromptWrapper = document.getElementById('alert-modal-prompt-input-wrapper');
+        const alertModalPromptInput = document.getElementById('alert-modal-prompt-input');
+
+        // --- Custom Alert/Prompt Functions ---
+        function hideAlert() {
+            alertModalContent.classList.add('opacity-0', 'translate-y-4');
+            setTimeout(() => {
+                alertModal.classList.add('hidden');
+            }, 200);
+        }
+
+        function showAlert(message, type = 'info', title = '') {
+            const icons = {
+                success: { class: 'bg-green-100 text-green-600', icon: '<i class="fas fa-check"></i>', defaultTitle: 'สำเร็จ' },
+                error: { class: 'bg-red-100 text-red-600', icon: '<i class="fas fa-times"></i>', defaultTitle: 'เกิดข้อผิดพลาด' },
+                warning: { class: 'bg-yellow-100 text-yellow-600', icon: '<i class="fas fa-exclamation-triangle"></i>', defaultTitle: 'คำเตือน' },
+                info: { class: 'bg-blue-100 text-blue-600', icon: '<i class="fas fa-info"></i>', defaultTitle: 'แจ้งเพื่อทราบ' }
+            };
+
+            const config = icons[type] || icons['info'];
+            
+            alertModalIcon.innerHTML = config.icon;
+            alertModalIcon.className = `w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center text-4xl ${config.class}`;
+            alertModalTitle.textContent = title || config.defaultTitle;
+            alertModalMessage.textContent = message;
+            alertModalPromptWrapper.classList.add('hidden');
+
+            alertModalButtons.innerHTML = `<button type="button" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-700 text-base font-medium text-white hover:bg-green-800 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">ตกลง</button>`;
+            alertModalButtons.querySelector('button').onclick = hideAlert;
+
+            alertModal.classList.remove('hidden');
+            setTimeout(() => {
+                alertModalContent.classList.remove('opacity-0', 'translate-y-4');
+            }, 10);
+        }
+
+        function showPrompt(message, title = 'กรุณากรอกข้อมูล') {
+            return new Promise((resolve) => {
+                const config = { class: 'bg-blue-100 text-blue-600', icon: '<i class="fas fa-question"></i>' };
+                
+                alertModalIcon.innerHTML = config.icon;
+                alertModalIcon.className = `w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center text-4xl ${config.class}`;
+                alertModalTitle.textContent = title;
+                alertModalMessage.textContent = message;
+                
+                alertModalPromptWrapper.classList.remove('hidden');
+                alertModalPromptInput.value = '';
+
+                const okButton = document.createElement('button');
+                okButton.type = 'button';
+                okButton.className = 'w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-700 text-base font-medium text-white hover:bg-green-800 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm';
+                okButton.textContent = 'ตกลง';
+                
+                const cancelButton = document.createElement('button');
+                cancelButton.type = 'button';
+                cancelButton.className = 'mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm';
+                cancelButton.textContent = 'ยกเลิก';
+
+                alertModalButtons.innerHTML = '';
+                alertModalButtons.appendChild(okButton);
+                alertModalButtons.appendChild(cancelButton);
+
+                const handleOk = () => {
+                    hideAlert();
+                    resolve(alertModalPromptInput.value);
+                };
+                
+                const handleCancel = () => {
+                    hideAlert();
+                    resolve(null);
+                };
+
+                okButton.onclick = handleOk;
+                cancelButton.onclick = handleCancel;
+                alertModalPromptInput.onkeydown = (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleOk();
+                    }
+                };
+
+                alertModal.classList.remove('hidden');
+                setTimeout(() => {
+                    alertModalContent.classList.remove('opacity-0', 'translate-y-4');
+                    alertModalPromptInput.focus();
+                }, 10);
+            });
+        }
+
+        // --- API Caller ---
+        async function callAppsScript(action, params = {}) {
+            const publicActions = ['checkLogin', 'registerUser', 'getBranches', 'forgotPassword', 'getPublicPermitDetails'];
+            if (!publicActions.includes(action) && currentUser) {
+                params.currentUser = { username: currentUser.username, role: currentUser.role, branchId: currentUser.branchId };
+            }
+
+            if (isDemoMode) {
+                console.log('DEMO MODE - Action:', action, 'Params:', params);
+                showAlert('การดำเนินการในโหมดตัวอย่างสำเร็จ (ไม่มีการบันทึกข้อมูลจริง)', 'info');
+                if (action === 'registerUser') {
+                    showLoginView();
+                }
+                return { message: 'Demo action successful' };
+            }
+
+            showLoader();
+            try {
+                const response = await fetch(APPS_SCRIPT_URL, {
+                    method: 'POST', mode: 'cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action, params }), redirect: 'follow'
+                });
+                const result = await response.json();
+                if (result.status === 'error') throw new Error(result.message);
+                return result.data;
+            } catch (error) {
+                console.error('API Call Error:', error);
+                showAlert(error.message, 'error');
+                throw error;
+            } finally {
+                hideLoader();
+            }
+        }
+        
+        // --- View Management & Navigation ---
+        function showLoginView() {
+            loginSection.classList.remove('hidden');
+            loginSection.classList.add('flex');
+            registerSection.classList.add('hidden');
+            registerSection.classList.remove('flex');
+            forgotPasswordSection.classList.add('hidden');
+            forgotPasswordSection.classList.remove('flex');
+            permitCheckSection.classList.add('hidden');
+            appLayout.classList.add('hidden');
+        }
+
+        function showRegisterView() {
+            loginSection.classList.add('hidden');
+            loginSection.classList.remove('flex');
+            registerSection.classList.remove('hidden');
+            registerSection.classList.add('flex');
+            forgotPasswordSection.classList.add('hidden');
+            forgotPasswordSection.classList.remove('flex');
+            permitCheckSection.classList.add('hidden');
+            appLayout.classList.add('hidden');
+            populateBranchDropdown('register-branch');
+        }
+
+        function showForgotPasswordView() {
+            loginSection.classList.add('hidden');
+            loginSection.classList.remove('flex');
+            registerSection.classList.add('hidden');
+            registerSection.classList.remove('flex');
+            forgotPasswordSection.classList.remove('hidden');
+            forgotPasswordSection.classList.add('flex');
+            permitCheckSection.classList.add('hidden');
+            appLayout.classList.add('hidden');
+        }
+        
+        function showPermitCheckResultView() {
+            loginSection.classList.add('hidden');
+            registerSection.classList.add('hidden');
+            forgotPasswordSection.classList.add('hidden');
+            appLayout.classList.add('hidden');
+            permitCheckSection.classList.remove('hidden');
+        }
+
+        function showDashboardView(user) {
+            loginSection.classList.add('hidden');
+            registerSection.classList.add('hidden');
+            forgotPasswordSection.classList.add('hidden');
+            permitCheckSection.classList.add('hidden');
+            appLayout.classList.remove('hidden');
+
+            document.getElementById('user-name').textContent = user.name;
+            document.getElementById('user-username').textContent = user.username;
+            document.getElementById('sidebar-role').textContent = user.role;
+            
+            const menuContainer = document.getElementById('sidebar-menu');
+            let menuItems = '';
+            let defaultPage = '';
+
+            // Common menu item for all roles
+            const checkPermitMenu = `<a href="#" class="sidebar-link block py-2.5 px-4 rounded transition duration-200 hover:bg-green-700" data-page="check-permit"><i class="fas fa-search w-6"></i>ตรวจสอบ Permit</a>`;
+
+            switch(user.role) {
+                case 'Admin':
+                case 'BranchAdmin':
+                    menuItems = `
+                        <a href="#" class="sidebar-link block py-2.5 px-4 rounded transition duration-200 hover:bg-green-700" data-page="admin-users"><i class="fas fa-users-cog w-6"></i>จัดการผู้ใช้</a>
+                        <a href="#" class="sidebar-link block py-2.5 px-4 rounded transition duration-200 hover:bg-green-700" data-page="all-permits"><i class="fas fa-archive w-6"></i>รายการคำขอทั้งหมด</a>
+                    `;
+                    defaultPage = 'admin-users';
+                    break;
+                case 'SectionManager':
+                    menuItems = `
+                        <a href="#" class="sidebar-link block py-2.5 px-4 rounded transition duration-200 hover:bg-green-700" data-page="sectionmanager-permits"><i class="fas fa-clipboard-list w-6"></i>คำขอ (Section Manager)</a>
+                        <a href="#" class="sidebar-link block py-2.5 px-4 rounded transition duration-200 hover:bg-green-700" data-page="all-permits"><i class="fas fa-archive w-6"></i>รายการทั้งหมด</a>
+                    `;
+                    defaultPage = 'sectionmanager-permits';
+                    break;
+                case 'GM':
+                    menuItems = `
+                        <a href="#" class="sidebar-link block py-2.5 px-4 rounded transition duration-200 hover:bg-green-700" data-page="gm-permits"><i class="fas fa-user-tie w-6"></i>คำขอ (GM)</a>
+                        <a href="#" class="sidebar-link block py-2.5 px-4 rounded transition duration-200 hover:bg-green-700" data-page="all-permits"><i class="fas fa-archive w-6"></i>รายการทั้งหมด</a>
+                    `;
+                    defaultPage = 'gm-permits';
+                    break;
+                case 'Contractor':
+                    menuItems = `
+                        <a href="#" class="sidebar-link block py-2.5 px-4 rounded transition duration-200 hover:bg-green-700" data-page="contractor-dashboard"><i class="fas fa-tachometer-alt w-6"></i>ภาพรวม</a>
+                        <a href="#" class="sidebar-link block py-2.5 px-4 rounded transition duration-200 hover:bg-green-700" data-page="contractor-permits"><i class="fas fa-file-alt w-6"></i>Work Permits</a>
+                    `;
+                    defaultPage = 'contractor-dashboard';
+                    break;
+            }
+            menuContainer.innerHTML = menuItems + checkPermitMenu;
+
+            document.getElementById('logout-btn').addEventListener('click', handleLogout);
+            document.getElementById('menu-toggle-btn').addEventListener('click', toggleSidebar);
+            menuContainer.querySelectorAll('.sidebar-link').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    navigateTo(link.dataset.page);
+                    if (window.innerWidth < 768) toggleSidebar();
+                });
+            });
+
+            navigateTo(defaultPage);
+        }
+
+        async function navigateTo(page) {
+            document.querySelectorAll('.sidebar-link').forEach(link => {
+                link.classList.toggle('active', link.dataset.page === page);
+            });
+            
+            pageContent.innerHTML = '';
+            showLoader();
+
+            try {
+                switch(page) {
+                    case 'admin-users':
+                        pageTitle.textContent = 'จัดการผู้ใช้งาน';
+                        await renderAdminUsersPage();
+                        break;
+                    case 'sectionmanager-permits':
+                        pageTitle.textContent = 'รายการคำขอ (Section Manager)';
+                        await renderApproverPermitsPage('SectionManager');
+                        break;
+                    case 'gm-permits':
+                        pageTitle.textContent = 'รายการคำขอ (GM)';
+                        await renderApproverPermitsPage('GM');
+                        break;
+                    case 'all-permits':
+                        pageTitle.textContent = 'รายการ Work Permit ทั้งหมด';
+                        await renderAllPermitsPage();
+                        break;
+                    case 'contractor-dashboard':
+                        pageTitle.textContent = 'ภาพรวม';
+                        await renderContractorDashboardPage();
+                        break;
+                    case 'contractor-permits':
+                        pageTitle.textContent = 'จัดการ Work Permits';
+                        await renderContractorPermitsPage();
+                        break;
+                    case 'check-permit':
+                        pageTitle.textContent = 'ตรวจสอบ Work Permit';
+                        renderCheckPermitPage(pageContent);
+                        break;
+                }
+            } catch (error) {
+                pageContent.innerHTML = `<p class="text-red-500">เกิดข้อผิดพลาดในการโหลดข้อมูลหน้าเพจ</p>`;
+            } finally {
+                hideLoader();
+            }
+        }
+
+        // --- Page Renderers ---
+        // Helper function to create search UI
+        function renderSearchUI(container, onSearchCallback) {
+            const uniqueId = `search-${Date.now()}`;
+            container.innerHTML = `
+                <div class="p-4 bg-gray-50 rounded-lg border">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                        <div>
+                            <label for="search-term-${uniqueId}" class="block text-sm font-medium text-gray-700">ค้นหาตามชื่อโครงการ</label>
+                            <input type="text" id="search-term-${uniqueId}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" placeholder="ชื่อโครงการ...">
+                        </div>
+                        <div>
+                            <label for="search-date-${uniqueId}" class="block text-sm font-medium text-gray-700">ค้นหาตามวันที่ปฏิบัติงาน</label>
+                            <input type="date" id="search-date-${uniqueId}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                        </div>
+                        <div class="flex space-x-2">
+                            <button id="search-btn-${uniqueId}" class="w-full bg-green-700 text-white font-bold py-2 px-4 rounded-md hover:bg-green-800 transition duration-300">
+                                <i class="fas fa-search"></i> ค้นหา
+                            </button>
+                            <button id="clear-btn-${uniqueId}" class="w-full bg-gray-500 text-white font-bold py-2 px-4 rounded-md hover:bg-gray-600 transition duration-300">
+                                <i class="fas fa-times"></i> ล้าง
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            const searchTermInput = document.getElementById(`search-term-${uniqueId}`);
+            const searchDateInput = document.getElementById(`search-date-${uniqueId}`);
+            
+            document.getElementById(`search-btn-${uniqueId}`).addEventListener('click', () => {
+                onSearchCallback(searchTermInput.value, searchDateInput.value);
+            });
+
+            document.getElementById(`clear-btn-${uniqueId}`).addEventListener('click', () => {
+                searchTermInput.value = '';
+                searchDateInput.value = '';
+                onSearchCallback('', '');
+            });
+        }
+        
+        async function renderAdminUsersPage() {
+             if (branchesCache.length === 0) {
+                try {
+                    const branchData = await callAppsScript('getBranches');
+                    branchesCache = branchData.branches;
+                } catch (e) {
+                    console.error("Could not fetch branches for user page.", e);
+                }
+             }
+             const data = await callAppsScript('getUsersByBranch');
+             const allBranches = branchesCache;
+            pageContent.innerHTML = `
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ชื่อ</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Username</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">บทบาท</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">สาขา</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">สถานะ</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                ${data.users.map(u => {
+                                    const canApprove = u.Status === 'Pending' && (currentUser.role === 'Admin' || (currentUser.role === 'BranchAdmin' && u.Role !== 'Admin' && u.Role !== 'BranchAdmin'));
+                                    const canEdit = currentUser.role === 'Admin' || (currentUser.role === 'BranchAdmin' && u.Role !== 'Admin' && u.Role !== 'BranchAdmin' && (u.Role === 'Contractor' || u.BranchID === currentUser.branchId));
+                                    const canResetPassword = canEdit; // Same logic as editing
+
+                                    return `
+                                    <tr>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${u.Name}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${u.Username}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${u.Role}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${allBranches.find(b => b.BranchID === u.BranchID)?.BranchName || '-'}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(u.Status)}">${u.Status}</span></td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-4">
+                                            ${canApprove ? `<button onclick="handleUpdateUserStatus('${u.Username}', 'Active')" class="text-green-600 hover:text-green-900">อนุมัติ</button>` : ''}
+                                            ${canEdit ? `<button onclick="openEditUserModal('${u.Username}', '${u.Role}', '${u.BranchID}')" class="text-indigo-600 hover:text-indigo-900">แก้ไข</button>` : ''}
+                                            ${canResetPassword ? `<button onclick="handlePasswordReset('${u.Username}')" class="text-gray-500 hover:text-gray-800">รีเซ็ตรหัส</button>` : ''}
+                                        </td>
+                                    </tr>
+                                `}).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+        
+        async function renderApproverPermitsPage(role) {
+            pageContent.innerHTML = `
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div id="search-container"></div>
+                    <div id="permit-list" class="overflow-x-auto mt-4"></div>
+                </div>
+            `;
+
+            const fetchAndRender = async (searchTerm = '', searchDate = '') => {
+                try {
+                    const data = await callAppsScript('getApproverDashboardData', { role, searchTerm, searchDate });
+                    renderPermitTable(data.permits);
+                } catch (error) {
+                    document.getElementById('permit-list').innerHTML = `<p class="text-red-500 text-center">เกิดข้อผิดพลาดในการโหลดข้อมูล</p>`;
+                }
+            };
+
+            renderSearchUI(document.getElementById('search-container'), fetchAndRender);
+            await fetchAndRender(); // Initial load
+        }
+
+        async function renderAllPermitsPage() {
+            pageContent.innerHTML = `
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div id="search-container"></div>
+                    <div id="permit-list" class="overflow-x-auto mt-4"></div>
+                </div>
+            `;
+            
+            const fetchAndRender = async (searchTerm = '', searchDate = '') => {
+                try {
+                    const data = await callAppsScript('getAllPermitsData', { searchTerm, searchDate });
+                    renderPermitTable(data.permits);
+                } catch (error) {
+                    document.getElementById('permit-list').innerHTML = `<p class="text-red-500 text-center">เกิดข้อผิดพลาดในการโหลดข้อมูล</p>`;
+                }
+            };
+
+            renderSearchUI(document.getElementById('search-container'), fetchAndRender);
+            await fetchAndRender(); // Initial load
+        }
+
+        async function renderContractorDashboardPage() {
+            await refreshContractorData();
+            const { projects, employees, permits } = contractorDataCache;
+            pageContent.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <div class="flex justify-between items-center mb-4 border-b pb-2">
+                           <h2 class="text-lg font-bold text-gray-700">โครงการ</h2>
+                           <button onclick="openAddProjectModal()" class="bg-blue-500 text-white px-3 py-1 rounded-md text-sm hover:bg-blue-600"><i class="fas fa-plus"></i> เพิ่ม</button>
+                        </div>
+                        <div id="project-list" class="space-y-2">${projects.length > 0 ? projects.map(p => `<div class="text-sm text-gray-600">${p.ProjectName}</div>`).join('') : '<p class="text-sm text-gray-500">ยังไม่มีโครงการ</p>'}</div>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <div class="flex justify-between items-center mb-4 border-b pb-2">
+                           <h2 class="text-lg font-bold text-gray-700">พนักงาน</h2>
+                           <button onclick="openAddEmployeeModal()" class="bg-blue-500 text-white px-3 py-1 rounded-md text-sm hover:bg-blue-600"><i class="fas fa-plus"></i> เพิ่ม</button>
+                        </div>
+                        <div id="employee-list" class="space-y-2">${employees.length > 0 ? employees.map(e => `<div class="text-sm text-gray-600">${e.EmployeeName}</div>`).join('') : '<p class="text-sm text-gray-500">ยังไม่มีพนักงาน</p>'}</div>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h2 class="text-lg font-bold text-gray-700 mb-4 border-b pb-2">สรุป Work Permit</h2>
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-center"><span class="text-gray-600">รออนุมัติ</span><span class="font-bold text-yellow-600">${permits.filter(p=>p.Status.includes('Pending')).length}</span></div>
+                            <div class="flex justify-between items-center"><span class="text-gray-600">อนุมัติแล้ว</span><span class="font-bold text-green-600">${permits.filter(p=>p.Status==='Approved').length}</span></div>
+                            <div class="flex justify-between items-center"><span class="text-gray-600">ทั้งหมด</span><span class="font-bold text-gray-800">${permits.length}</span></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function renderContractorPermitsPage() {
+            pageContent.innerHTML = `
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="flex justify-between items-center mb-4 border-b pb-2">
+                       <h2 class="text-lg font-bold text-gray-700">ประวัติและยื่นคำขอ Work Permit</h2>
+                       <button onclick="openNewPermitModal()" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700"><i class="fas fa-file-alt"></i> ยื่นคำขอใหม่</button>
+                    </div>
+                    <div id="search-container"></div>
+                    <div id="permit-history" class="overflow-x-auto mt-4"></div>
+                </div>`;
+            
+            const fetchAndRender = async (searchTerm = '', searchDate = '') => {
+                try {
+                    const data = await callAppsScript('getContractorPermits', { searchTerm, searchDate });
+                    const permitHistory = document.getElementById('permit-history');
+                    if (data.permits.length === 0) {
+                        permitHistory.innerHTML = '<p class="text-center text-gray-500 py-4">ไม่พบประวัติการยื่นคำขอที่ตรงกับเงื่อนไข</p>';
+                        return;
+                    }
+                    permitHistory.innerHTML = `
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">โครงการ</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">วันที่ยื่น</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ผู้ประสานงานหลัก</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">สถานะ</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                ${data.permits.map(p => `
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-800">${p.PermitID}</td>
+                                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${p.ProjectName}</td>
+                                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${new Date(p.RequestTimestamp).toLocaleDateString('th-TH')}</td>
+                                        <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${getEmployeeName(p.PrimaryContactEmployeeID)}</td>
+                                        <td class="px-4 py-4 whitespace-nowrap text-sm"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(p.Status)}">${p.Status}</span></td>
+                                        <td class="px-4 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                                            <button onclick="openPermitDetailModal('${p.PermitID}')" class="text-indigo-600 hover:text-indigo-900">ดูรายละเอียด</button>
+                                            ${p.Status === 'Approved' ? `<button onclick="openContractorCloseoutModal('${p.PermitID}')" class="text-green-600 hover:text-green-900">จบงาน</button>` : ''}
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                } catch (error) {
+                    document.getElementById('permit-history').innerHTML = `<p class="text-red-500 text-center">เกิดข้อผิดพลาดในการโหลดข้อมูล</p>`;
+                }
+            };
+
+            renderSearchUI(document.getElementById('search-container'), fetchAndRender);
+            await refreshContractorData(); // Still need this for employee names in the table
+            await fetchAndRender(); // Initial load
+        }
+
+        function renderPermitTable(permits) {
+            const container = document.getElementById('permit-list');
+             if (!permits || permits.length === 0) {
+                container.innerHTML = '<p class="text-center text-gray-500 py-4">ไม่พบรายการคำขอที่ตรงกับเงื่อนไข</p>';
+                return;
+            }
+            container.innerHTML = `
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">โครงการ</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">วันที่ยื่น</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ผู้รับเหมา</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">สถานะ</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        ${permits.map(p => `
+                            <tr>
+                                <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-800">${p.PermitID}</td>
+                                <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${p.ProjectName || 'N/A'}</td>
+                                <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${new Date(p.RequestTimestamp).toLocaleDateString('th-TH')}</td>
+                                <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">${p.ContractorName || p.ContractorUsername}</td>
+                                <td class="px-4 py-4 whitespace-nowrap text-sm"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(p.Status)}">${p.Status}</span></td>
+                                <td class="px-4 py-4 whitespace-nowrap text-sm">
+                                    <button onclick="openPermitDetailModal('${p.PermitID}')" class="text-indigo-600 hover:text-indigo-900">ดูรายละเอียด</button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        function renderCheckPermitPage(container) {
+            const uniqueId = `checker-${Date.now()}`;
+            container.innerHTML = `
+                <div class="bg-white p-6 rounded-lg shadow-md max-w-lg mx-auto">
+                    <h2 class="text-xl font-bold text-center mb-4 text-gray-800">ตรวจสอบ Work Permit</h2>
+                    <div class="relative mb-4">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3"><i class="fa-solid fa-ticket text-gray-400"></i></span>
+                        <input type="text" id="check-permit-id-${uniqueId}" placeholder="กรอก Permit ID" class="w-full bg-gray-100 text-gray-800 rounded-md py-2 pl-10 pr-3 focus:outline-none">
+                    </div>
+                    <button id="search-permit-btn-${uniqueId}" class="w-full bg-green-700 text-white font-bold py-2 px-4 rounded-full hover:bg-green-800 transition duration-300 mb-2">
+                        <i class="fas fa-search"></i> ค้นหา
+                    </button>
+                    <button id="scan-qr-btn-${uniqueId}" class="w-full bg-gray-600 text-white font-bold py-2 px-4 rounded-full hover:bg-gray-700 transition duration-300">
+                        <i class="fas fa-qrcode"></i> สแกน QR Code
+                    </button>
+                    <div id="qr-reader-${uniqueId}" class="mt-4"></div>
+                    <p id="qr-status-${uniqueId}" class="text-center text-sm text-gray-500 mt-2"></p>
+                </div>
+            `;
+
+            document.getElementById(`search-permit-btn-${uniqueId}`).addEventListener('click', () => {
+                const permitId = document.getElementById(`check-permit-id-${uniqueId}`).value;
+                handlePublicSearch(permitId);
+            });
+
+            document.getElementById(`scan-qr-btn-${uniqueId}`).addEventListener('click', () => {
+                startQrScanner(`qr-reader-${uniqueId}`, `qr-status-${uniqueId}`);
+            });
+        }
+
+        function createSafetyChecklistTable(checklistString) {
+            if (!checklistString) return '<p class="text-gray-500">ไม่มีข้อมูล</p>';
+
+            const lines = checklistString.split('\n');
+            let tableHtml = '<table class="min-w-full divide-y divide-gray-200 text-sm"><thead><tr><th class="px-2 py-2 text-left font-medium text-gray-600">หัวข้อการตรวจสอบ</th><th class="px-2 py-2 text-left font-medium text-gray-600">ผลการตรวจ</th></tr></thead><tbody class="bg-white divide-y divide-gray-200">';
+            
+            lines.forEach(line => {
+                const parts = line.split(':');
+                const question = parts.shift();
+                const answer = parts.join(':').trim();
+                tableHtml += `<tr><td class="px-2 py-2 align-top text-gray-700">${question}</td><td class="px-2 py-2 align-top font-medium text-gray-900">${answer}</td></tr>`;
+            });
+
+            tableHtml += '</tbody></table>';
+            return tableHtml;
+        }
+
+        function renderPublicPermitDetails(permit) {
+            const contentContainer = document.getElementById('permit-check-content');
+            const formatTextarea = (text) => text ? String(text).replace(/\n/g, '<br>') : '-';
+            const safeFormatDate = (dateStr) => dateStr ? new Date(dateStr).toLocaleDateString('th-TH') : '-';
+            const safeFormatDateTime = (dateStr) => dateStr ? new Date(dateStr).toLocaleString('th-TH') : '-';
+            const safeFormatTime = (timeStr) => {
+                if (!timeStr) return '';
+                try {
+                    const date = new Date(timeStr);
+                    if (isNaN(date.getTime())) return '';
+                    return date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+                } catch (e) {
+                    return '';
+                }
+            };
+
+            // Build the closeout section dynamically
+            let closeoutSection = '';
+            const showContractorCloseout = ['Pending SM Close-out', 'Pending GM Close-out', 'Closed'].includes(permit.Status);
+            const showSmCloseout = ['Pending GM Close-out', 'Closed'].includes(permit.Status);
+            const showGmCloseout = permit.Status === 'Closed';
+
+            const contractorInfo = showContractorCloseout ? `
+                <div class="pt-4 mt-4 border-t">
+                    <h4 class="font-semibold text-gray-800 mb-2">ข้อมูลการปิดงาน (ผู้รับเหมา)</h4>
+                    <div class="space-y-1 text-sm">
+                        <div><strong class="text-gray-600 w-32 inline-block">วันที่/เวลาสิ้นสุด:</strong> ${safeFormatDate(permit.Contractor_Actual_End_Date)} ${safeFormatTime(permit.Contractor_Actual_End_Time)}</div>
+                        <div><strong class="text-gray-600 w-32 inline-block">สภาพพื้นที่:</strong> ${permit.Contractor_Condition || '-'}</div>
+                        <div><strong class="text-gray-600 w-32 inline-block">วันที่ส่ง:</strong> ${safeFormatDateTime(permit.Contractor_Closeout_Timestamp)}</div>
+                    </div>
+                </div>` : '';
+            
+            const smInfo = showSmCloseout ? `
+                <div class="pt-4 mt-4 border-t">
+                    <h4 class="font-semibold text-gray-800 mb-2">ผลการประเมิน (Section Manager)</h4>
+                    <div class="space-y-1 text-sm">
+                        <div><strong class="text-gray-600 w-32 inline-block">ผลการประเมิน:</strong> ${permit.SM_Evaluation || '-'}</div>
+                        <div><strong class="text-gray-600 w-32 inline-block">ผู้ประเมิน:</strong> ${permit.SM_Closeout_ApproverName || permit.SM_Closeout_ApproverUsername || '-'}</div>
+                        <div><strong class="text-gray-600 w-32 inline-block">วันที่ประเมิน:</strong> ${safeFormatDateTime(permit.SM_Closeout_Timestamp)}</div>
+                    </div>
+                </div>` : '';
+
+            const gmInfo = showGmCloseout ? `
+                <div class="pt-4 mt-4 border-t">
+                    <h4 class="font-semibold text-gray-800 mb-2">ผลการอนุมัติปิดงาน (General Manager)</h4>
+                    <div class="space-y-1 text-sm">
+                        <div><strong class="text-gray-600 w-32 inline-block">สถานะ:</strong> ${permit.GM_Closeout_Status || '-'}</div>
+                        <div><strong class="text-gray-600 w-32 inline-block">ผู้อนุมัติ:</strong> ${permit.GM_Closeout_ApproverName || permit.GM_Closeout_ApproverUsername || '-'}</div>
+                        <div><strong class="text-gray-600 w-32 inline-block">วันที่อนุมัติ:</strong> ${safeFormatDateTime(permit.GM_Closeout_Timestamp)}</div>
+                    </div>
+                </div>` : '';
+
+            if (showContractorCloseout) {
+                closeoutSection = `
+                    <div class="mt-6">
+                        <h3 class="text-lg font-bold text-gray-900 border-b pb-2">สถานะการปิดงาน</h3>
+                        ${contractorInfo}
+                        ${smInfo}
+                        ${gmInfo}
+                    </div>`;
+            }
+
+            contentContainer.innerHTML = `
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold text-gray-800">รายละเอียด Work Permit</h2>
+                    <button onclick="handleBackFromPermitCheck()" class="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300">&larr; กลับ</button>
+                </div>
+                <div class="space-y-4 text-sm">
+                    <!-- Main Details -->
+                    <div class="p-4 border rounded-lg bg-gray-50">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
+                            <div><strong class="text-gray-600 w-32 inline-block">Permit ID:</strong><span class="font-mono">${permit.PermitID}</span></div>
+                            <div><strong class="text-gray-600 w-32 inline-block">สถานะรวม:</strong><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(permit.Status)}">${permit.Status}</span></div>
+                            <div><strong class="text-gray-600 w-32 inline-block">บริษัทผู้รับเหมา:</strong>${permit.ContractorName || permit.ContractorUsername || 'N/A'}</div>
+                            <div><strong class="text-gray-600 w-32 inline-block">โครงการ:</strong>${permit.ProjectName}</div>
+                            <div><strong class="text-gray-600 w-32 inline-block">สาขา:</strong>${permit.BranchName}</div>
+                            <div><strong class="text-gray-600 w-32 inline-block">เวลา:</strong>${permit.WorkTime}</div>
+                            <div><strong class="text-gray-600 w-32 inline-block">วันที่ปฏิบัติงาน:</strong>${safeFormatDate(permit.StartDate)} - ${safeFormatDate(permit.EndDate)}</div>
+                            <div><strong class="text-gray-600 w-32 inline-block">ผู้ประสานงานหลัก:</strong>${permit.PrimaryContactEmployeeName}</div>
+                            <div><strong class="text-gray-600 w-32 inline-block">จำนวนคน:</strong>${permit.NumWorkers} คน</div>
+                        </div>
+                    </div>
+
+                    <!-- Job Details -->
+                    <div class="space-y-3">
+                        <div><h4 class="font-semibold text-gray-800 border-b pb-1">ลักษณะงาน</h4><p class="mt-1 text-gray-700 pl-2">${formatTextarea(permit.JobDescription)}</p></div>
+                        <div><h4 class="font-semibold text-gray-800 border-b pb-1">รายชื่อผู้ปฏิบัติงาน</h4><p class="mt-1 text-gray-700 pl-2">${formatTextarea(permit.WorkerList)}</p></div>
+                        <div><h4 class="font-semibold text-gray-800 border-b pb-1">อุปกรณ์ PPE</h4><p class="mt-1 text-gray-700 pl-2">${formatTextarea(permit.PPE)}</p></div>
+                        <div><h4 class="font-semibold text-gray-800 border-b pb-1">การตรวจสอบความปลอดภัย</h4><div class="mt-1 text-gray-700">${createSafetyChecklistTable(permit.SafetyChecklist)}</div></div>
+                    </div>
+                </div>
+                
+                <!-- Approval Status -->
+                <div class="mt-6 pt-4 border-t grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <h4 class="font-semibold text-gray-800 mb-2">การอนุมัติโดย Section Manager</h4>
+                        <div class="space-y-1 text-sm">
+                            <div><strong class="text-gray-600 w-24 inline-block">สถานะ:</strong> <span class="${getStatusClass(permit.SectionManager_Status)} px-2 py-0.5 rounded-full text-xs">${permit.SectionManager_Status || 'N/A'}</span></div>
+                            <div><strong class="text-gray-600 w-24 inline-block">ผู้อนุมัติ:</strong> ${permit.SectionManager_ApproverName || permit.SectionManager_ApproverUsername || '-'}</div>
+                            <div><strong class="text-gray-600 w-24 inline-block">วันที่:</strong> ${safeFormatDateTime(permit.SectionManager_ApprovalTimestamp)}</div>
+                            <div><strong class="text-gray-600 w-24 inline-block">เหตุผล:</strong> ${permit.SectionManager_Reason || '-'}</div>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-gray-800 mb-2">การอนุมัติโดย GM</h4>
+                        <div class="space-y-1 text-sm">
+                            <div><strong class="text-gray-600 w-24 inline-block">สถานะ:</strong> <span class="${getStatusClass(permit.GM_Status)} px-2 py-0.5 rounded-full text-xs">${permit.GM_Status || 'N/A'}</span></div>
+                            <div><strong class="text-gray-600 w-24 inline-block">ผู้อนุมัติ:</strong> ${permit.GM_ApproverName || permit.GM_ApproverUsername || '-'}</div>
+                            <div><strong class="text-gray-600 w-24 inline-block">วันที่:</strong> ${safeFormatDateTime(permit.GM_ApprovalTimestamp)}</div>
+                            <div><strong class="text-gray-600 w-24 inline-block">เหตุผล:</strong> ${permit.GM_Reason || '-'}</div>
+                        </div>
+                    </div>
+                </div>
+
+                ${closeoutSection}
+            `;
+            showPermitCheckResultView();
+        }
+        
+        // --- Modal Handlers ---
+        function openModal(title, content) {
+            modalTitle.innerHTML = title;
+            modalBody.innerHTML = content;
+            modal.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            modal.classList.add('hidden');
+            modalTitle.innerHTML = '';
+            modalBody.innerHTML = '';
+        }
+        
+        function openAddProjectModal() {
+            openModal('เพิ่มโครงการใหม่', `
+                <form id="add-project-form">
+                    <div class="mb-4"><label for="projectName" class="block text-sm font-medium text-gray-700">ชื่อโครงการ</label><input type="text" id="projectName" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required></div>
+                    <div class="text-right"><button type="button" onclick="closeModal()" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-md mr-2">ยกเลิก</button><button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-md">บันทึก</button></div>
+                </form>
+            `);
+            document.getElementById('add-project-form').addEventListener('submit', handleAddProject);
+        }
+
+        function openAddEmployeeModal() {
+            openModal('เพิ่มพนักงานใหม่', `
+                <form id="add-employee-form">
+                    <div class="mb-4"><label for="employeeName" class="block text-sm font-medium text-gray-700">ชื่อ-นามสกุล พนักงาน</label><input type="text" id="employeeName" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required></div>
+                    <div class="text-right"><button type="button" onclick="closeModal()" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-md mr-2">ยกเลิก</button><button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-md">บันทึก</button></div>
+                </form>
+            `);
+            document.getElementById('add-employee-form').addEventListener('submit', handleAddEmployee);
+        }
+
+        async function openNewPermitModal() {
+            await refreshContractorData(); // Make sure projects/employees are up-to-date
+            const { projects, employees } = contractorDataCache;
+            if (projects.length === 0 || employees.length === 0) {
+                showAlert("กรุณาเพิ่มข้อมูลโครงการและพนักงานก่อนยื่นคำขอ", 'warning'); return;
+            }
+            const content = `
+                <form id="new-permit-form" class="space-y-4">
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">ชื่อบริษัทผู้รับเหมา</label>
+                            <input type="text" value="${currentUser.name}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-gray-100" readonly>
+                        </div>
+                        <div>
+                            <label for="permitBranch" class="block text-sm font-medium text-gray-700">สาขาที่ยื่นคำขอ</label>
+                            <select id="permitBranch" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                                <option value="" disabled selected>กรุณาเลือกสาขา</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="permitProject" class="block text-sm font-medium text-gray-700">โครงการ</label>
+                            <select id="permitProject" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                                ${projects.map(p => `<option value="${p.ProjectID}">${p.ProjectName}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div>
+                            <label for="permitPrimaryContact" class="block text-sm font-medium text-gray-700">ผู้ประสานงานหลัก</label>
+                            <select id="permitPrimaryContact" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                                ${employees.map(e => `<option value="${e.EmployeeID}">${e.EmployeeName}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div>
+                            <label for="permitStartDate" class="block text-sm font-medium text-gray-700">วันที่เริ่มปฏิบัติงาน</label>
+                            <input type="date" id="permitStartDate" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                        </div>
+                        <div>
+                            <label for="permitEndDate" class="block text-sm font-medium text-gray-700">วันที่สิ้นสุด</label>
+                            <input type="date" id="permitEndDate" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                        </div>
+                        <div>
+                            <label for="permitWorkTime" class="block text-sm font-medium text-gray-700">เวลาทำงาน</label>
+                            <input type="text" id="permitWorkTime" placeholder="เช่น 08:00 - 17:00" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                        </div>
+                         <div>
+                            <label for="permitNumWorkers" class="block text-sm font-medium text-gray-700">จำนวนผู้ปฏิบัติงาน (คน)</label>
+                            <input type="number" id="permitNumWorkers" min="1" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">ลักษณะงาน (เลือกได้มากกว่า 1 ข้อ)</label>
+                        <div id="job-description-options" class="mt-2 space-y-2">
+                            <div class="flex items-center">
+                                <input id="job-hot" name="jobDescription" type="checkbox" value="งานที่ก่อนให้เกิดประกายไฟ (Hot Work)" class="h-4 w-4 text-green-600 border-gray-300 rounded">
+                                <label for="job-hot" class="ml-3 block text-sm text-gray-900">งานที่ก่อนให้เกิดประกายไฟ (Hot Work)</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input id="job-high" name="jobDescription" type="checkbox" value="งานบนที่สูง 2 เมตรขึ้นไป (High Work)" class="h-4 w-4 text-green-600 border-gray-300 rounded">
+                                <label for="job-high" class="ml-3 block text-sm text-gray-900">งานบนที่สูง 2 เมตรขึ้นไป (High Work)</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input id="job-elec" name="jobDescription" type="checkbox" value="งานระบบไฟฟ้าในอาคาร (Electrical Work)" class="h-4 w-4 text-green-600 border-gray-300 rounded">
+                                <label for="job-elec" class="ml-3 block text-sm text-gray-900">งานระบบไฟฟ้าในอาคาร (Electrical Work)</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input id="job-confined" name="jobDescription" type="checkbox" value="งานในพื้นที่อับอากาศ (Confined Space Work)" class="h-4 w-4 text-green-600 border-gray-300 rounded">
+                                <label for="job-confined" class="ml-3 block text-sm text-gray-900">งานในพื้นที่อับอากาศ (Confined Space Work)</label>
+                            </div>
+                            <div class="flex items-start">
+                                <div class="flex items-center h-5">
+                                    <input id="job-other" name="jobDescription" type="checkbox" value="อื่นๆ" class="h-4 w-4 text-green-600 border-gray-300 rounded">
+                                </div>
+                                <div class="ml-3 text-sm">
+                                    <label for="job-other" class="text-gray-900">งานอื่นๆ (ระบุ)</label>
+                                    <input type="text" id="job-other-text" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm hidden" placeholder="โปรดระบุลักษณะงาน">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label for="permitWorkerList" class="block text-sm font-medium text-gray-700">รายชื่อผู้ปฏิบัติงาน (คนละ 1 บรรทัด)</label>
+                        <textarea id="permitWorkerList" rows="4" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required></textarea>
+                    </div>
+
+                    <div>
+                        <label for="permitPPE" class="block text-sm font-medium text-gray-700">อุปกรณ์คุ้มครองความปลอดภัย (PPE)</label>
+                        <textarea id="permitPPE" rows="3" placeholder="เช่น หมวกนิรภัย, แว่นตา, ถุงมือ" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required></textarea>
+                    </div>
+
+                    <div>
+                        <label for="permitSafetyChecklist" class="block text-sm font-medium text-gray-700">การตรวจสอบความปลอดภัยก่อนเริ่มงาน</label>
+                        <div id="safety-checklist-options" class="mt-2 space-y-3 text-sm"></div>
+                    </div>
+
+                    <div class="text-right pt-4 border-t">
+                        <button type="button" onclick="closeModal()" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-md mr-2">ยกเลิก</button>
+                        <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded-md">ยื่นคำขอ</button>
+                    </div>
+                </form>
+            `;
+            openModal('ยื่นคำขอ Work Permit ใหม่', content);
+            populateBranchDropdown('permitBranch');
+            populateSafetyChecklist();
+            document.getElementById('job-other').addEventListener('change', function(e) {
+                document.getElementById('job-other-text').classList.toggle('hidden', !e.target.checked);
+            });
+            document.getElementById('new-permit-form').addEventListener('submit', handleSubmitPermit);
+        }
+
+        // <<< UPDATED: This function is now more robust and includes debugging
+        async function openPermitDetailModal(permitId) {
+            const permit = await callAppsScript('getPermitDetails', { permitId });
+            console.log("Received Permit Data:", permit); // DEBUGGING: Log the received data object to the console
+
+            let actionButtons = '';
+            const canSectionManagerApprove = currentUser.role === 'SectionManager' && permit.Status === 'Pending Section Manager Approval';
+            const canGmApprove = currentUser.role === 'GM' && permit.Status === 'Pending GM Approval';
+            const canSmCloseout = currentUser.role === 'SectionManager' && permit.Status === 'Pending SM Close-out';
+            const canGmCloseout = currentUser.role === 'GM' && permit.Status === 'Pending GM Close-out';
+
+            if (canSectionManagerApprove || canGmApprove) {
+                actionButtons = `
+                    <div class="mt-6 pt-4 border-t no-print">
+                        <h4 class="font-semibold text-gray-800 mb-2">การดำเนินการอนุมัติ (${currentUser.role})</h4>
+                        <label for="rejectionReason" class="block text-sm font-medium text-gray-700">เหตุผล (กรณีไม่อนุมัติ)</label>
+                        <textarea id="rejectionReason" rows="2" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></textarea>
+                        <div class="flex justify-end space-x-3 mt-4">
+                            <button onclick="handleApprovalAction('${permitId}', 'Rejected')" class="bg-red-600 text-white px-4 py-2 rounded-md">ไม่อนุมัติ</button>
+                            <button onclick="handleApprovalAction('${permitId}', 'Approved')" class="bg-green-600 text-white px-4 py-2 rounded-md">อนุมัติ</button>
+                        </div>
+                    </div>`;
+            } else if (canSmCloseout) {
+                 actionButtons = `
+                    <div class="mt-6 pt-4 border-t no-print">
+                        <h4 class="font-semibold text-gray-800 mb-2">ประเมินการปิดจบงาน (SM)</h4>
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700">ผลการประเมิน</label>
+                            <div class="mt-2 space-y-2">
+                                <div class="flex items-center"><input type="radio" id="sm-eval-ok" name="sm-evaluation" value="เรียบร้อย" class="h-4 w-4 text-green-600 border-gray-300"><label for="sm-eval-ok" class="ml-3 block text-sm text-gray-900">เรียบร้อย</label></div>
+                                <div class="flex items-center"><input type="radio" id="sm-eval-not-ok" name="sm-evaluation" value="ไม่เรียบร้อย" class="h-4 w-4 text-green-600 border-gray-300"><label for="sm-eval-not-ok" class="ml-3 block text-sm text-gray-900">ไม่เรียบร้อย</label></div>
+                            </div>
+                        </div>
+                        <div class="flex justify-end mt-4">
+                            <button onclick="handleSmCloseout('${permitId}')" class="bg-green-600 text-white px-4 py-2 rounded-md">ยืนยัน</button>
+                        </div>
+                    </div>`;
+            } else if (canGmCloseout) {
+                 actionButtons = `
+                    <div class="mt-6 pt-4 border-t no-print">
+                        <h4 class="font-semibold text-gray-800 mb-2">อนุมัติปิดงาน (GM)</h4>
+                        <div class="flex justify-end mt-4">
+                            <button onclick="handleGmCloseout('${permitId}')" class="bg-green-600 text-white px-4 py-2 rounded-md">อนุมัติปิดงาน</button>
+                        </div>
+                    </div>`;
+            }
+
+            let qrCodeSection = '';
+            if (permit.Status === 'Approved') {
+                qrCodeSection = `
+                    <div class="mt-4 text-center">
+                        <h4 class="font-semibold text-gray-700">Work Permit QR Code</h4>
+                        <div id="qrcode-container" class="mt-2 inline-block p-2 border rounded-md bg-white">
+                            <div id="qrcode"></div>
+                        </div>
+                        <div class="mt-4 flex justify-center space-x-3 no-print">
+                            <button onclick="handleDownloadQR('${permitId}')" class="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700">
+                                <i class="fas fa-download"></i> ดาวน์โหลด QR
+                            </button>
+                            <button onclick='handlePrintReport(${JSON.stringify(permit)})' class="bg-gray-600 text-white px-4 py-2 rounded-md text-sm hover:bg-gray-700">
+                                <i class="fas fa-print"></i> พิมพ์
+                            </button>
+                        </div>
+                    </div>`;
+            }
+
+            const formatTextarea = (text) => text ? String(text).replace(/\n/g, '<br>') : '-';
+            
+            // Helper for safe date formatting
+            const safeFormatDate = (dateStr) => dateStr ? new Date(dateStr).toLocaleDateString('th-TH') : '-';
+            const safeFormatDateTime = (dateStr) => dateStr ? new Date(dateStr).toLocaleString('th-TH') : '-';
+            const safeFormatTime = (timeStr) => {
+                if (!timeStr) return '';
+                try {
+                    const date = new Date(timeStr);
+                    if (isNaN(date.getTime())) {
+                        return ''; // Return empty if invalid date
+                    }
+                    // Format to HH:mm:ss using Thai locale but 24-hour format
+                    return date.toLocaleTimeString('th-TH', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                        hour12: false
+                    });
+                } catch (e) {
+                    return ''; // Return empty on error
+                }
+            };
+
+            // <<< UPDATED: Build the closeout section dynamically based on status
+            let closeoutSection = '';
+            const showContractorCloseout = ['Pending SM Close-out', 'Pending GM Close-out', 'Closed'].includes(permit.Status);
+            const showSmCloseout = ['Pending GM Close-out', 'Closed'].includes(permit.Status);
+            const showGmCloseout = permit.Status === 'Closed';
+
+            const contractorInfo = showContractorCloseout ? `
+                <div class="pt-4 mt-4 border-t">
+                    <h4 class="font-semibold text-gray-800 mb-2">ข้อมูลการปิดงาน (ผู้รับเหมา)</h4>
+                    <div class="space-y-1 text-sm">
+                        <div><strong class="text-gray-600 w-32 inline-block">วันที่/เวลาสิ้นสุด:</strong> ${safeFormatDate(permit.Contractor_Actual_End_Date)} ${safeFormatTime(permit.Contractor_Actual_End_Time)}</div>
+                        <div><strong class="text-gray-600 w-32 inline-block">สภาพพื้นที่:</strong> ${permit.Contractor_Condition || '-'}</div>
+                        <div><strong class="text-gray-600 w-32 inline-block">วันที่ส่ง:</strong> ${safeFormatDateTime(permit.Contractor_Closeout_Timestamp)}</div>
+                    </div>
+                </div>
+            ` : '';
+
+            const smInfo = showSmCloseout ? `
+                <div class="pt-4 mt-4 border-t">
+                    <h4 class="font-semibold text-gray-800 mb-2">ผลการประเมิน (Section Manager)</h4>
+                    <div class="space-y-1 text-sm">
+                        <div><strong class="text-gray-600 w-32 inline-block">ผลการประเมิน:</strong> ${permit.SM_Evaluation || '-'}</div>
+                        <div><strong class="text-gray-600 w-32 inline-block">ผู้ประเมิน:</strong> ${permit.SM_Closeout_ApproverName || permit.SM_Closeout_ApproverUsername || '-'}</div>
+                        <div><strong class="text-gray-600 w-32 inline-block">วันที่ประเมิน:</strong> ${safeFormatDateTime(permit.SM_Closeout_Timestamp)}</div>
+                    </div>
+                </div>
+            ` : '';
+
+            const gmInfo = showGmCloseout ? `
+                <div class="pt-4 mt-4 border-t">
+                    <h4 class="font-semibold text-gray-800 mb-2">ผลการอนุมัติปิดงาน (General Manager)</h4>
+                    <div class="space-y-1 text-sm">
+                        <div><strong class="text-gray-600 w-32 inline-block">สถานะ:</strong> ${permit.GM_Closeout_Status || '-'}</div>
+                        <div><strong class="text-gray-600 w-32 inline-block">ผู้อนุมัติ:</strong> ${permit.GM_Closeout_ApproverName || permit.GM_Closeout_ApproverUsername || '-'}</div>
+                        <div><strong class="text-gray-600 w-32 inline-block">วันที่อนุมัติ:</strong> ${safeFormatDateTime(permit.GM_Closeout_Timestamp)}</div>
+                    </div>
+                </div>
+            ` : '';
+
+            if (showContractorCloseout) { // The main condition is now just this
+                closeoutSection = `
+                    <div class="mt-6">
+                        <h3 class="text-lg font-bold text-gray-900 border-b pb-2">สถานะการปิดงาน</h3>
+                        ${contractorInfo}
+                        ${smInfo}
+                        ${gmInfo}
+                    </div>
+                `;
+            }
+
+
+            const content = `
+                <div class="space-y-4 text-sm">
+                    <!-- Main Details -->
+                    <div class="p-4 border rounded-lg bg-gray-50">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
+                            <div><strong class="text-gray-600 w-32 inline-block">Permit ID:</strong><span class="font-mono">${permit.PermitID}</span></div>
+                            <div><strong class="text-gray-600 w-32 inline-block">สถานะรวม:</strong><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(permit.Status)}">${permit.Status}</span></div>
+                            <div><strong class="text-gray-600 w-32 inline-block">บริษัทผู้รับเหมา:</strong>${permit.ContractorName || permit.ContractorUsername || 'N/A'}</div>
+                            <div><strong class="text-gray-600 w-32 inline-block">โครงการ:</strong>${permit.ProjectName}</div>
+                            <div><strong class="text-gray-600 w-32 inline-block">สาขา:</strong>${permit.BranchName}</div>
+                            <div><strong class="text-gray-600 w-32 inline-block">เวลา:</strong>${permit.WorkTime}</div>
+                            <div><strong class="text-gray-600 w-32 inline-block">วันที่ปฏิบัติงาน:</strong>${safeFormatDate(permit.StartDate)} - ${safeFormatDate(permit.EndDate)}</div>
+                            <div><strong class="text-gray-600 w-32 inline-block">ผู้ประสานงานหลัก:</strong>${permit.PrimaryContactEmployeeName}</div>
+                            <div><strong class="text-gray-600 w-32 inline-block">จำนวนคน:</strong>${permit.NumWorkers} คน</div>
+                        </div>
+                    </div>
+
+                    <!-- Job Details -->
+                    <div class="space-y-3">
+                        <div><h4 class="font-semibold text-gray-800 border-b pb-1">ลักษณะงาน</h4><p class="mt-1 text-gray-700 pl-2">${formatTextarea(permit.JobDescription)}</p></div>
+                        <div><h4 class="font-semibold text-gray-800 border-b pb-1">รายชื่อผู้ปฏิบัติงาน</h4><p class="mt-1 text-gray-700 pl-2">${formatTextarea(permit.WorkerList)}</p></div>
+                        <div><h4 class="font-semibold text-gray-800 border-b pb-1">อุปกรณ์ PPE</h4><p class="mt-1 text-gray-700 pl-2">${formatTextarea(permit.PPE)}</p></div>
+                        <div><h4 class="font-semibold text-gray-800 border-b pb-1">การตรวจสอบความปลอดภัย</h4><div class="mt-1 text-gray-700">${createSafetyChecklistTable(permit.SafetyChecklist)}</div></div>
+                    </div>
+                </div>
+                
+                <!-- Approval Status -->
+                <div class="mt-6 pt-4 border-t grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <h4 class="font-semibold text-gray-800 mb-2">การอนุมัติโดย Section Manager</h4>
+                        <div class="space-y-1 text-sm">
+                            <div><strong class="text-gray-600 w-24 inline-block">สถานะ:</strong> <span class="${getStatusClass(permit.SectionManager_Status)} px-2 py-0.5 rounded-full text-xs">${permit.SectionManager_Status || 'N/A'}</span></div>
+                            <div><strong class="text-gray-600 w-24 inline-block">ผู้อนุมัติ:</strong> ${permit.SectionManager_ApproverName || permit.SectionManager_ApproverUsername || '-'}</div>
+                            <div><strong class="text-gray-600 w-24 inline-block">วันที่:</strong> ${safeFormatDateTime(permit.SectionManager_ApprovalTimestamp)}</div>
+                            <div><strong class="text-gray-600 w-24 inline-block">เหตุผล:</strong> ${permit.SectionManager_Reason || '-'}</div>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-gray-800 mb-2">การอนุมัติโดย GM</h4>
+                        <div class="space-y-1 text-sm">
+                            <div><strong class="text-gray-600 w-24 inline-block">สถานะ:</strong> <span class="${getStatusClass(permit.GM_Status)} px-2 py-0.5 rounded-full text-xs">${permit.GM_Status || 'N/A'}</span></div>
+                            <div><strong class="text-gray-600 w-24 inline-block">ผู้อนุมัติ:</strong> ${permit.GM_ApproverName || permit.GM_ApproverUsername || '-'}</div>
+                            <div><strong class="text-gray-600 w-24 inline-block">วันที่:</strong> ${safeFormatDateTime(permit.GM_ApprovalTimestamp)}</div>
+                            <div><strong class="text-gray-600 w-24 inline-block">เหตุผล:</strong> ${permit.GM_Reason || '-'}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Display close-out info -->
+                ${closeoutSection}
+                
+                ${qrCodeSection}
+                ${actionButtons}`;
+            openModal(`รายละเอียดคำขอ #${permitId}`, content);
+
+            if (permit.Status === 'Approved' && permit.QRCode) {
+                new QRCode(document.getElementById("qrcode"), { text: permit.QRCode, width: 128, height: 128 });
+            }
+        }
+
+        function openEditUserModal(username, currentRole, currentBranchId) {
+            let availableRoles = [];
+            if (currentUser.role === 'Admin') {
+                availableRoles = ['Contractor', 'SectionManager', 'GM', 'BranchAdmin', 'Admin'];
+            } else if (currentUser.role === 'BranchAdmin') {
+                availableRoles = ['Contractor', 'SectionManager', 'GM'];
+            }
+
+            const roleOptions = availableRoles
+                .map(role => `<option value="${role}" ${role === currentRole ? 'selected' : ''}>${role}</option>`).join('');
+            
+            const branchOptions = branchesCache
+                .map(branch => `<option value="${branch.BranchID}" ${branch.BranchID === currentBranchId ? 'selected' : ''}>${branch.BranchName}</option>`).join('');
+
+            const content = `
+                <form id="edit-user-form" class="space-y-4">
+                    <input type="hidden" id="edit-user-username" value="${username}">
+                    <div>
+                        <label for="edit-user-role" class="block text-sm font-medium text-gray-700">บทบาท</label>
+                        <select id="edit-user-role" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                            ${roleOptions}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="edit-user-branch" class="block text-sm font-medium text-gray-700">สาขา</label>
+                        <select id="edit-user-branch" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" ${currentUser.role === 'BranchAdmin' && currentRole !== 'Contractor' ? 'disabled' : ''}>
+                            <option value="">-- ไม่มี --</option>
+                            ${branchOptions}
+                        </select>
+                    </div>
+                    <div class="text-right pt-4 border-t">
+                        <button type="button" onclick="closeModal()" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-md mr-2">ยกเลิก</button>
+                        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-md">บันทึก</button>
+                    </div>
+                </form>
+            `;
+            openModal(`แก้ไขผู้ใช้: ${username}`, content);
+            document.getElementById('edit-user-form').addEventListener('submit', handleEditUser);
+        }
+
+        function openContractorCloseoutModal(permitId) {
+            const content = `
+                <form id="contractor-closeout-form" class="space-y-4">
+                    <input type="hidden" id="closeout-permit-id" value="${permitId}">
+                     <div>
+                        <label for="closeout-date" class="block text-sm font-medium text-gray-700">วันที่สิ้นสุดการทำงาน</label>
+                        <input type="date" id="closeout-date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                    </div>
+                    <div>
+                        <label for="closeout-time" class="block text-sm font-medium text-gray-700">เวลาสิ้นสุดการทำงาน</label>
+                        <input type="time" id="closeout-time" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">สภาพพื้นที่หลังจบงาน</label>
+                        <div class="mt-2 space-y-2">
+                            <div class="flex items-center">
+                                <input type="radio" id="condition-ok" name="condition" value="เรียบร้อย" class="h-4 w-4 text-green-600 border-gray-300" required>
+                                <label for="condition-ok" class="ml-3 block text-sm text-gray-900">เรียบร้อย</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input type="radio" id="condition-not-ok" name="condition" value="ไม่เรียบร้อย" class="h-4 w-4 text-green-600 border-gray-300">
+                                <label for="condition-not-ok" class="ml-3 block text-sm text-gray-900">ไม่เรียบร้อย</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-right pt-4 border-t">
+                        <button type="button" onclick="closeModal()" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-md mr-2">ยกเลิก</button>
+                        <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded-md">ยืนยันจบงาน</button>
+                    </div>
+                </form>
+            `;
+            openModal(`ฟอร์มจบงาน #${permitId}`, content);
+            document.getElementById('contractor-closeout-form').addEventListener('submit', handleContractorCloseout);
+        }
+
+        // --- Event Handlers ---
+        document.getElementById('login-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            document.getElementById('login-error').textContent = '';
+            try {
+                const user = await callAppsScript('checkLogin', {
+                    username: document.getElementById('username').value,
+                    password: document.getElementById('password').value
+                });
+                if (user) {
+                    currentUser = user;
+                    sessionStorage.setItem('workPermitUser', JSON.stringify(user));
+                    showDashboardView(user);
+                } else {
+                    document.getElementById('login-error').textContent = 'Username หรือรหัสผ่านไม่ถูกต้อง';
+                }
+            } catch (error) {
+                document.getElementById('login-error').textContent = error.message;
+            }
+        });
+
+        document.getElementById('register-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const name = document.getElementById('register-name').value;
+            const username = document.getElementById('register-username').value;
+            const phone = document.getElementById('register-phone').value;
+            const password = document.getElementById('register-password').value;
+            const confirmPassword = document.getElementById('register-confirm-password').value;
+            const role = document.getElementById('register-role').value;
+            const branchId = document.getElementById('register-branch').value;
+            const errorEl = document.getElementById('register-error');
+            errorEl.textContent = '';
+
+            if (password !== confirmPassword) {
+                errorEl.textContent = 'รหัสผ่านไม่ตรงกัน'; return;
+            }
+            if (password.length < 4) {
+                errorEl.textContent = 'รหัสผ่านต้องมีอย่างน้อย 4 ตัวอักษร'; return;
+            }
+            if (!role) {
+                errorEl.textContent = 'กรุณาเลือกบทบาท'; return;
+            }
+            if ((role !== 'Contractor') && !branchId) {
+                errorEl.textContent = 'กรุณาเลือกสาขา'; return;
+            }
+
+            try {
+                const result = await callAppsScript('registerUser', { name, username, password, role, branchId, phone });
+                showAlert(result.message, 'success');
+                showLoginView();
+            } catch (error) {
+                errorEl.textContent = error.message;
+            }
+        });
+        
+        document.getElementById('forgot-password-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const username = document.getElementById('forgot-username').value;
+            const phone = document.getElementById('forgot-phone').value;
+            const errorEl = document.getElementById('forgot-error');
+            errorEl.textContent = '';
+
+            try {
+                const result = await callAppsScript('forgotPassword', { username, phone });
+                showAlert(`รหัสผ่านของคุณคือ: ${result.password}`, 'success', 'พบรหัสผ่านแล้ว');
+                showLoginView();
+            } catch (error) {
+                errorEl.textContent = error.message;
+            }
+        });
+
+        document.getElementById('register-role').addEventListener('change', function(e) {
+            const branchSelector = document.getElementById('branch-selection-wrapper');
+            const nameInput = document.getElementById('register-name');
+            const nameIcon = document.querySelector('#register-name-wrapper .fa-solid');
+
+            if (this.value === 'Contractor') {
+                branchSelector.classList.add('hidden');
+                nameInput.placeholder = 'ชื่อบริษัทผู้รับเหมา';
+                if (nameIcon) {
+                    nameIcon.classList.remove('fa-id-card');
+                    nameIcon.classList.add('fa-building');
+                }
+            } else {
+                branchSelector.classList.remove('hidden');
+                nameInput.placeholder = 'ชื่อ-นามสกุล';
+                 if (nameIcon) {
+                    nameIcon.classList.remove('fa-building');
+                    nameIcon.classList.add('fa-id-card');
+                }
+            }
+        });
+
+        document.getElementById('show-register-link').addEventListener('click', (e) => { e.preventDefault(); showRegisterView(); });
+        document.getElementById('show-login-link').addEventListener('click', (e) => { e.preventDefault(); showLoginView(); });
+        document.getElementById('show-forgot-password-link').addEventListener('click', (e) => { e.preventDefault(); showForgotPasswordView(); });
+        document.getElementById('show-login-link-from-forgot').addEventListener('click', (e) => { e.preventDefault(); showLoginView(); });
+
+
+        function handleDemoLogin(role) {
+            isDemoMode = true;
+            currentUser = { name: 'Demo User', role: role, username: `${role.toLowerCase()}`};
+            showDashboardView(currentUser);
+        }
+
+        function handleLogout() {
+            currentUser = null;
+            contractorDataCache = null;
+            branchesCache = [];
+            isDemoMode = false;
+            sessionStorage.removeItem('workPermitUser');
+            showLoginView();
+        }
+
+        function handleBackFromPermitCheck() {
+            permitCheckSection.classList.add('hidden');
+            if (currentUser) {
+                appLayout.classList.remove('hidden');
+            } else {
+                showLoginView();
+            }
+        }
+        
+        async function handlePasswordReset(targetUsername) {
+            const newPassword = await showPrompt(`กรุณาใส่รหัสผ่านใหม่สำหรับ ${targetUsername}`, 'รีเซ็ตรหัสผ่าน');
+            if (newPassword === null) return;
+            if (newPassword.length < 4) {
+                showAlert('รหัสผ่านใหม่ต้องมีอย่างน้อย 4 ตัวอักษร', 'warning');
+                return;
+            }
+            await callAppsScript('updateUserPassword', { targetUsername, newPassword });
+            if (!isDemoMode) {
+                 showAlert("อัปเดตรหัสผ่านสำเร็จ", 'success');
+                 navigateTo('admin-users');
+            }
+        }
+
+        async function handleUpdateUserStatus(targetUsername, newStatus) {
+            try {
+                const result = await callAppsScript('updateUserStatus', { targetUsername, newStatus });
+                showAlert(result.message, 'success');
+                navigateTo('admin-users');
+            } catch(e) { /* showAlert is already called in callAppsScript */ }
+        }
+
+        async function handleEditUser(e) {
+            e.preventDefault();
+            const targetUsername = document.getElementById('edit-user-username').value;
+            const newRole = document.getElementById('edit-user-role').value;
+            const newBranchId = document.getElementById('edit-user-branch').value;
+            try {
+                const result = await callAppsScript('updateUserRoleAndBranch', { targetUsername, newRole, newBranchId });
+                showAlert(result.message, 'success');
+                closeModal();
+                navigateTo('admin-users');
+            } catch(e) { /* showAlert is already called in callAppsScript */ }
+        }
+        
+        async function handleAddProject(e) {
+            e.preventDefault();
+            await callAppsScript('addProject', { projectName: document.getElementById('projectName').value });
+            if (!isDemoMode) {
+                showAlert('เพิ่มโครงการสำเร็จ', 'success');
+                closeModal();
+                navigateTo('contractor-dashboard');
+            }
+        }
+
+        async function handleAddEmployee(e) {
+            e.preventDefault();
+            await callAppsScript('addEmployee', { employeeName: document.getElementById('employeeName').value });
+             if (!isDemoMode) {
+                showAlert('เพิ่มพนักงานสำเร็จ', 'success');
+                closeModal();
+                navigateTo('contractor-dashboard');
+            }
+        }
+        
+        async function handleSubmitPermit(e) {
+            e.preventDefault();
+            const selectedJobs = [];
+            document.querySelectorAll('#job-description-options input[type="checkbox"]:checked').forEach(checkbox => {
+                if (checkbox.id === 'job-other') {
+                    const otherText = document.getElementById('job-other-text').value;
+                    if (otherText) {
+                        selectedJobs.push(`งานอื่นๆ: ${otherText}`);
+                    }
+                } else {
+                    selectedJobs.push(checkbox.value);
+                }
+            });
+
+            const safetyChecklistResults = [];
+            const questions = document.querySelectorAll('#safety-checklist-options .checklist-item');
+            questions.forEach((q, index) => {
+                if (index < 13) { // The 13 radio button questions
+                    const selectedValue = q.querySelector(`input[name="safety-q${index+1}"]:checked`)?.value || 'N/A';
+                    safetyChecklistResults.push(selectedValue);
+                }
+            });
+            // Handle the 14th item (textarea)
+            const q14Text = document.getElementById('safety-q14-text').value;
+            safetyChecklistResults.push(q14Text || 'N/A');
+
+
+            const permitData = {
+                contractorUsername: currentUser.username,
+                contractorName: currentUser.name,
+                branchId: document.getElementById('permitBranch').value,
+                projectId: document.getElementById('permitProject').value,
+                primaryContactEmployeeId: document.getElementById('permitPrimaryContact').value,
+                startDate: document.getElementById('permitStartDate').value,
+                endDate: document.getElementById('permitEndDate').value,
+                workTime: document.getElementById('permitWorkTime').value,
+                jobDescription: selectedJobs.join('\n'),
+                numWorkers: document.getElementById('permitNumWorkers').value,
+                workerList: document.getElementById('permitWorkerList').value,
+                ppe: document.getElementById('permitPPE').value,
+                safetyChecklist: safetyChecklistResults, // Pass as an array of answers
+            };
+            await callAppsScript('submitWorkPermit', { permitData });
+            if (!isDemoMode) {
+                showAlert('ยื่นคำขอ Work Permit สำเร็จ', 'success');
+                closeModal();
+                navigateTo('contractor-permits');
+            }
+        }
+
+        async function handleApprovalAction(permitId, newStatus) {
+            const reason = document.getElementById('rejectionReason')?.value || '';
+            if (newStatus === 'Rejected' && !reason) {
+                showAlert('กรุณาระบุเหตุผลในการไม่อนุมัติ', 'warning');
+                return;
+            }
+            const params = {
+                permitId,
+                newStatus,
+                reason,
+                approver: { username: currentUser.username, role: currentUser.role }
+            };
+            await callAppsScript('updatePermitApproval', params);
+            if (!isDemoMode) {
+                showAlert(`อัปเดตสถานะเป็น ${newStatus} สำเร็จ`, 'success');
+                closeModal();
+                if (currentUser.role === 'SectionManager') {
+                    navigateTo('sectionmanager-permits');
+                } else {
+                    navigateTo(`${currentUser.role.toLowerCase()}-permits`);
+                }
+            }
+        }
+
+        async function handleContractorCloseout(e) {
+            e.preventDefault();
+            const permitId = document.getElementById('closeout-permit-id').value;
+            const endDate = document.getElementById('closeout-date').value;
+            const endTime = document.getElementById('closeout-time').value;
+            const condition = document.querySelector('input[name="condition"]:checked')?.value;
+
+            if (!endDate || !endTime || !condition) {
+                showAlert('กรุณากรอกข้อมูลให้ครบถ้วน', 'warning');
+                return;
+            }
+            
+            await callAppsScript('submitContractorCloseout', { permitId, endDate, endTime, condition });
+            showAlert('ส่งคำขอปิดงานสำเร็จ', 'success');
+            closeModal();
+            navigateTo('contractor-permits');
+        }
+
+        async function handleSmCloseout(permitId) {
+            const evaluation = document.querySelector('input[name="sm-evaluation"]:checked')?.value;
+            if (!evaluation) {
+                showAlert('กรุณาเลือกผลการประเมิน', 'warning');
+                return;
+            }
+            await callAppsScript('submitSmCloseout', { permitId, evaluation, approver: currentUser });
+            showAlert('ประเมินการปิดงานสำเร็จ', 'success');
+            closeModal();
+            navigateTo('sectionmanager-permits');
+        }
+
+        async function handleGmCloseout(permitId) {
+            await callAppsScript('submitGmCloseout', { permitId, approver: currentUser });
+            showAlert('อนุมัติปิดงานสำเร็จ', 'success');
+            closeModal();
+            navigateTo('gm-permits');
+        }
+
+        function handleDownloadQR(permitId) {
+            const qrCodeElement = document.getElementById('qrcode');
+            if (!qrCodeElement) { showAlert('ไม่พบ QR Code', 'error'); return; }
+            const qrCodeImage = qrCodeElement.querySelector('img');
+            if (!qrCodeImage) { showAlert('ไม่พบรูปภาพ QR Code', 'error'); return; }
+
+            const canvas = document.createElement('canvas');
+            const padding = 20;
+            const textHeight = 30;
+            const qrSize = qrCodeImage.width;
+            
+            canvas.width = qrSize + (padding * 2);
+            canvas.height = qrSize + (padding * 2) + textHeight;
+            
+            const ctx = canvas.getContext('2d');
+            
+            // White background
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw QR Code
+            ctx.drawImage(qrCodeImage, padding, padding, qrSize, qrSize);
+            
+            // Draw Permit ID text
+            ctx.fillStyle = 'black';
+            ctx.font = '16px Kanit, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(permitId, canvas.width / 2, qrSize + padding + 20);
+
+            // Trigger download
+            const link = document.createElement('a');
+            link.href = canvas.toDataURL('image/png');
+            link.download = `work-permit-qr-${permitId}.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function handlePrintReport(permit) {
+            const qrCodeElement = document.getElementById('qrcode');
+            let qrCodeImageSrc = '';
+            if (qrCodeElement) {
+                const qrImg = qrCodeElement.querySelector('img');
+                if (qrImg) {
+                    qrCodeImageSrc = qrImg.src;
+                }
+            }
+
+            const formatTextForReport = (text) => text ? String(text).replace(/\n/g, '<br>') : '-';
+            const formatDateForReport = (dateString) => dateString ? new Date(dateString).toLocaleDateString('th-TH') : '-';
+            const formatDateTimeForReport = (dateString) => dateString ? new Date(dateString).toLocaleString('th-TH') : '-';
+
+            const reportWindow = window.open('', '_blank');
+            reportWindow.document.write(`
+                <!DOCTYPE html>
+                <html lang="th">
+                <head>
+                    <meta charset="UTF-8">
+                    <title>Work Permit Report - ${permit.PermitID}</title>
+                    <script src="https://cdn.tailwindcss.com"><\/script>
+                    <style>
+                        @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap');
+                        body { font-family: 'Kanit', sans-serif; }
+                        @page { size: A4; margin: 1.5cm; }
+                        .report-section { border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 1rem; margin-bottom: 1rem; page-break-inside: avoid; }
+                        .report-section h2 { font-size: 1.125rem; font-weight: 600; border-bottom: 1px solid #cbd5e1; padding-bottom: 0.5rem; margin-bottom: 1rem; }
+                        .grid-item { display: flex; flex-direction: column; padding-bottom: 0.5rem; }
+                        .grid-item strong { color: #4a5568; font-weight: 500; }
+                        .grid-item span { color: #1a202c; }
+                        .checklist-table { width: 100%; border-collapse: collapse; }
+                        .checklist-table td { padding: 0.5rem; border: 1px solid #e2e8f0; font-size: 0.875rem; }
+                    </style>
+                </head>
+                <body class="p-4">
+                    <div class="text-center mb-4">
+                        <h1 class="text-2xl font-bold">ใบอนุญาตทำงาน (Work Permit)</h1>
+                        <p class="text-lg font-mono">${permit.PermitID}</p>
+                    </div>
+
+                    <div class="report-section">
+                        <h2>ข้อมูลหลัก</h2>
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div class="grid-item"><strong>บริษัทผู้รับเหมา:</strong> <span>${permit.ContractorName || '-'}</span></div>
+                            <div class="grid-item"><strong>โครงการ:</strong> <span>${permit.ProjectName || '-'}</span></div>
+                            <div class="grid-item"><strong>สาขา:</strong> <span>${permit.BranchName || '-'}</span></div>
+                            <div class="grid-item"><strong>ผู้ประสานงานหลัก:</strong> <span>${permit.PrimaryContactEmployeeName || '-'}</span></div>
+                            <div class="grid-item"><strong>วันที่ปฏิบัติงาน:</strong> <span>${formatDateForReport(permit.StartDate)} - ${formatDateForReport(permit.EndDate)}</span></div>
+                            <div class="grid-item"><strong>เวลาทำงาน:</strong> <span>${permit.WorkTime || '-'}</span></div>
+                            <div class="grid-item"><strong>จำนวนผู้ปฏิบัติงาน:</strong> <span>${permit.NumWorkers} คน</span></div>
+                        </div>
+                    </div>
+                    
+                    <div class="report-section">
+                        <h2>รายละเอียดงาน</h2>
+                        <div class="grid grid-cols-1 gap-4 text-sm">
+                           <div class="grid-item"><strong>ลักษณะงาน:</strong> <span>${formatTextForReport(permit.JobDescription)}</span></div>
+                           <div class="grid-item"><strong>รายชื่อผู้ปฏิบัติงาน:</strong> <span>${formatTextForReport(permit.WorkerList)}</span></div>
+                           <div class="grid-item"><strong>อุปกรณ์ PPE:</strong> <span>${formatTextForReport(permit.PPE)}</span></div>
+                        </div>
+                    </div>
+
+                    <div class="report-section">
+                        <h2>การตรวจสอบความปลอดภัย</h2>
+                        ${createSafetyChecklistTable(permit.SafetyChecklist)}
+                    </div>
+
+                    <div class="report-section">
+                        <h2>สถานะการอนุมัติ</h2>
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <h3 class="font-semibold mb-2">Section Manager</h3>
+                                <div class="grid-item"><strong>สถานะ:</strong> <span>${permit.SectionManager_Status || 'N/A'}</span></div>
+                                <div class="grid-item"><strong>ผู้อนุมัติ:</strong> <span>${permit.SectionManager_ApproverName || '-'}</span></div>
+                                <div class="grid-item"><strong>วันที่:</strong> <span>${formatDateTimeForReport(permit.SectionManager_ApprovalTimestamp)}</span></div>
+                                <div class="grid-item"><strong>เหตุผล:</strong> <span>${permit.SectionManager_Reason || '-'}</span></div>
+                            </div>
+                             <div>
+                                <h3 class="font-semibold mb-2">GM</h3>
+                                <div class="grid-item"><strong>สถานะ:</strong> <span>${permit.GM_Status || 'N/A'}</span></div>
+                                <div class="grid-item"><strong>ผู้อนุมัติ:</strong> <span>${permit.GM_ApproverName || '-'}</span></div>
+                                <div class="grid-item"><strong>วันที่:</strong> <span>${formatDateTimeForReport(permit.GM_ApprovalTimestamp)}</span></div>
+                                <div class="grid-item"><strong>เหตุผล:</strong> <span>${permit.GM_Reason || '-'}</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    ${qrCodeImageSrc ? `
+                    <div class="text-center mt-6">
+                        <img src="${qrCodeImageSrc}" alt="QR Code" class="inline-block">
+                        <p class="font-mono text-sm">${permit.PermitID}</p>
+                    </div>` : ''}
+
+                    <script>
+                        window.onload = function() {
+                            // Use a small timeout to ensure all content (especially images) is rendered
+                            setTimeout(function() {
+                                window.print();
+                                window.close();
+                            }, 500);
+                        };
+                    <\/script>
+                </body>
+                </html>
+            `);
+            reportWindow.document.close();
+        }
+
+        // --- Permit Checker Functions ---
+        async function handlePublicSearch(permitId) {
+            if (!permitId || permitId.trim() === '') {
+                showAlert('กรุณากรอก Permit ID', 'warning');
+                return;
+            }
+            try {
+                const permitDetails = await callAppsScript('getPublicPermitDetails', { permitId: permitId.trim() });
+                renderPublicPermitDetails(permitDetails);
+            } catch (error) {
+                // showAlert is already called in callAppsScript
+            }
+        }
+
+        function startQrScanner(readerId, statusId) {
+            const statusEl = document.getElementById(statusId);
+            if (html5QrCode && html5QrCode.isScanning) {
+                stopQrScanner(readerId, statusId);
+                return;
+            }
+
+            html5QrCode = new Html5Qrcode(readerId);
+            const qrCodeSuccessCallback = (decodedText, decodedResult) => {
+                console.log(`Code matched = ${decodedText}`, decodedResult);
+                stopQrScanner(readerId, statusId);
+                
+                // The QR code now directly contains the PermitID
+                const permitId = decodedText;
+
+                handlePublicSearch(permitId);
+            };
+            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+            
+            statusEl.textContent = 'กำลังเปิดกล้อง...';
+            document.getElementById(readerId).innerHTML = ''; // Clear previous content
+            html5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback)
+                .then(() => {
+                    statusEl.textContent = 'เล็งกล้องไปที่ QR Code';
+                    const scanButton = document.querySelector(`button[id^="scan-qr-btn-"]`);
+                    if(scanButton) scanButton.innerHTML = '<i class="fas fa-stop-circle"></i> หยุดสแกน';
+                })
+                .catch(err => {
+                    console.error("QR Scanner Error:", err);
+                    statusEl.textContent = 'ไม่สามารถเปิดกล้องได้';
+                    showAlert('ไม่สามารถเข้าถึงกล้องได้ กรุณาตรวจสอบการอนุญาต', 'error');
+                });
+        }
+
+        function stopQrScanner(readerId, statusId) {
+            if (html5QrCode && html5QrCode.isScanning) {
+                html5QrCode.stop().then(() => {
+                    console.log("QR Code scanning stopped.");
+                    document.getElementById(readerId).innerHTML = '';
+                    document.getElementById(statusId).textContent = '';
+                    const scanButton = document.querySelector(`button[id^="scan-qr-btn-"]`);
+                    if(scanButton) scanButton.innerHTML = '<i class="fas fa-qrcode"></i> สแกน QR Code';
+                }).catch(err => {
+                    console.error("Failed to stop scanner:", err);
+                });
+            }
+        }
+
+        // --- Utility & Data Functions ---
+        const showLoader = () => loadingOverlay.classList.remove('hidden');
+        const hideLoader = () => loadingOverlay.classList.add('hidden');
+        
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('-translate-x-full');
+        }
+
+        async function refreshContractorData() {
+            if (isDemoMode && contractorDataCache) return;
+            const data = await callAppsScript('getContractorDashboardData');
+            contractorDataCache = data;
+        }
+
+        function getEmployeeName(employeeId) {
+            if (!contractorDataCache || !contractorDataCache.employees) return 'N/A';
+            const employee = contractorDataCache.employees.find(e => e.EmployeeID === employeeId);
+            return employee ? employee.EmployeeName : 'Unknown';
+        }
+
+        function getStatusClass(status) {
+            if (!status) return 'bg-gray-200 text-gray-800';
+            status = status.toLowerCase();
+            if (status.includes('approved') || status.includes('active')) return 'status-approved';
+            if (status.includes('rejected')) return 'status-rejected';
+            if (status.includes('pending section manager')) return 'status-pending-hr';
+            if (status.includes('pending gm')) return 'status-pending-gm';
+            if (status.includes('closed')) return 'status-closed';
+            if (status === 'pending') return 'status-pending';
+            return 'bg-gray-200 text-gray-800';
+        }
+        
+        async function populateBranchDropdown(elementId) {
+            if (branchesCache.length === 0) {
+                const data = await callAppsScript('getBranches');
+                branchesCache = data.branches;
+            }
+            const selectEl = document.getElementById(elementId);
+            selectEl.innerHTML = '<option value="" disabled selected>กรุณาเลือกสาขา</option>';
+            branchesCache.forEach(branch => {
+                const option = document.createElement('option');
+                option.value = branch.BranchID;
+                option.textContent = branch.BranchName;
+                selectEl.appendChild(option);
+            });
+        }
+
+        function populateSafetyChecklist() {
+            const container = document.getElementById('safety-checklist-options');
+            const questions = [
+                "มีการประเมินอันตรายที่อาจเกิดขึ้นและเตรียมมาตรการป้องกันแล้ว",
+                "ได้ตรวจการแต่งกายและการไม่สวมใส่อุปกรณ์คุ้มครองความปลอดภัยส่วนบุคคลตามลักษณะความเสี่ยงของผู้ปฏิบัติงานแล้ว",
+                "ได้มีการตรวจสอบ อุปกรณ์ เครื่องมือ และเครื่องจักรที่ใช้ในการปฏิบัติงานอยู่ในสภาพพร้อมใช้งาน/มีการต่อสายดินแล้ว",
+                "การป้องกันเพลิงไหม้ ในพื้นที่ต้องไม่มีสารเคมี-น้ำมัน หรือวัตสดุติดไฟและมีการป้องกันสะเก็ดไฟแล้ว",
+                "ได้มีการปิดกั้นพื้นที่บริเวณปฏิบัติงาน หรือใช้กรวยขวาง พร้อมทั้งติดป้ายเตือนอันตรายต่างๆแล้ว",
+                "ได้รับอนุญาติการใช้ไฟฟ้า และมีตู้ไไฟฟ้าย่อยหรือการต่อพ่วงเต้าเสียบจากเจ้าหน้าที่ไฟฟ้าแล้ว",
+                "ก่อนลงมือปฏิบัติงานมีการตรวจสอบความปลอดภัยก่อนทุกครั้ง เช่น ตรวจพื้นที่การทำงาน เครื่องจักร เครื่องมือ เครื่องใช้ไฟฟ้า จะต้องอยู่ในสภาพพร้อมใช้งาน และปลอดภัย",
+                "มีการตัดกระแสไฟฟ้า/ปิดเครื่องจักรที่อาจก่อให้เกิดอันตรายขณะปฏิบัติงานพร้อมทั้งติดตั้งป้ายผู้ไม่เกี่ยวข้อง\"ห้ามเปิด/เดินเครื่องเด็ดขาด\"",
+                "พื้นที่ปฏิบัติงานอยู่ในพื้นที่ที่ปลอดภัย /อากาศถ่ายเท หรือมีการระบายอากาศที่เพียงพอ",
+                "ได้รับการอบรมความปลอดภัย/ได้รับการแจ้งเตือนอันตราย และมาตรการควบคุม หรือวิธีป้องกันอันตรายให้กับให้กับผู้ปฏิบัติงานทุกคนทราบ",
+                "กรณีปฏิบัติงานในที่อับอากาศผู้ปฏิบัติต้องเป็นผู้ที่ผ่านการฝึกอบรมตามที่กฎหมายกำหนด",
+                "กรณีปฏิบัติงานในที่อับอากาศต้องมีแผนการปฏิบัติงาน ขั้นตอนการปฏิบัติงาน กำหนดผู้ปฏิบัติงานอย่างชัดเจน",
+                "กรณีปฏิบัติงานอากาศในที่อับอากาศก่อนเข้าปฏิบัติงานต้องอยู่ในค่าที่ปลอดภัย กรณีไม่ปลอดภัยต้องสวมใส่อุปกรณ์ช่วยชีวิตก่อนเข้าปฏิบัติงาน"
+            ];
+            
+            container.innerHTML = '';
+            questions.forEach((q, index) => {
+                const qId = index + 1;
+                const item = document.createElement('div');
+                item.className = 'checklist-item border-t pt-3';
+                item.innerHTML = `
+                    <label class="block text-sm text-gray-900">${qId}. ${q}</label>
+                    <div class="flex items-center space-x-4 mt-1">
+                        <div class="flex items-center">
+                            <input id="q${qId}-yes" name="safety-q${qId}" type="radio" value="ใช่" class="h-4 w-4 text-green-600 border-gray-300">
+                            <label for="q${qId}-yes" class="ml-2 block text-sm text-gray-700">ใช่</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input id="q${qId}-no" name="safety-q${qId}" type="radio" value="ไม่ใช่" class="h-4 w-4 text-green-600 border-gray-300">
+                            <label for="q${qId}-no" class="ml-2 block text-sm text-gray-700">ไม่ใช่</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input id="q${qId}-na" name="safety-q${qId}" type="radio" value="ไม่เกี่ยวข้อง" class="h-4 w-4 text-green-600 border-gray-300">
+                            <label for="q${qId}-na" class="ml-2 block text-sm text-gray-700">ไม่เกี่ยวข้อง</label>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+
+            // Add question 14
+            const q14Item = document.createElement('div');
+            q14Item.className = 'checklist-item border-t pt-3';
+            q14Item.innerHTML = `
+                <label for="safety-q14-text" class="block text-sm text-gray-900">14. กรณีผลการตรวจ ไม่ใช่ ให้ระบุมาตรการการควบคุม</label>
+                <textarea id="safety-q14-text" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></textarea>
+            `;
+            container.appendChild(q14Item);
+        }
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Fetch branches on initial load to cache them
+            try {
+                const data = await callAppsScript('getBranches');
+                branchesCache = data.branches;
+            } catch (e) {
+                console.error("Could not fetch branches on initial load.", e);
+                showAlert("ไม่สามารถโหลดข้อมูลสาขาได้ กรุณาลองอีกครั้ง", "error");
+            }
+
+            const storedUser = sessionStorage.getItem('workPermitUser');
+            if (storedUser) {
+                currentUser = JSON.parse(storedUser);
+                showDashboardView(currentUser);
+            } else {
+                showLoginView();
+            }
+        });
+    </script>
+</body>
+</html>
