@@ -1,6 +1,6 @@
 // sw.js - Service Worker
 
-const CACHE_NAME = 'work-permit-cache-v1.0';
+const CACHE_NAME = 'work-permit-cache-v1.0.0';
 // รายการไฟล์ที่จำเป็นสำหรับ App Shell ที่จะถูกแคชไว้
 const urlsToCache = [
   './', // แคชหน้าแรก (index.html)
