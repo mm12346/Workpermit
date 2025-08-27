@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Work Permit Management</title>
+    
+    <!-- PWA Manifest and Theme Color -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#166534">
+    <link rel="apple-touch-icon" href="https://placehold.co/192x192/166534/FFFFFF?text=WP">
+
     <!-- Tailwind CSS via CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome for icons -->
@@ -94,11 +100,6 @@
                 <div class="bg-green-800 rounded-2xl shadow-xl p-8 text-white">
                     <h1 class="text-xl font-bold text-center mb-6">ระบบจัดการใบขออนุญาตทำงาน</h1>
                     <form id="login-form">
-                         <div class="mb-4">
-                            <select class="w-full bg-white text-gray-800 rounded-md py-2 px-3 focus:outline-none">
-                                <option>Sritrang Log in</option>
-                            </select>
-                        </div>
                         <div class="relative mb-4">
                             <span class="absolute inset-y-0 left-0 flex items-center pl-3"><i class="fa-solid fa-user text-gray-400"></i></span>
                             <input type="text" id="username" placeholder="Username" class="w-full bg-white text-gray-800 rounded-md py-2 pl-10 pr-3 focus:outline-none" required>
@@ -127,14 +128,15 @@
                 <div class="bg-white rounded-2xl shadow-xl p-8">
                     <form id="register-form">
                         <div class="relative mb-4">
-                             <span class="absolute inset-y-0 left-0 flex items-center pl-3"><i class="fa-solid fa-user-gear text-gray-400"></i></span>
-                             <select id="register-role" class="w-full bg-gray-100 text-gray-800 rounded-md py-2 pl-10 pr-3 focus:outline-none" required>
+                             <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none"><i class="fa-solid fa-user-gear text-gray-400"></i></span>
+                             <select id="register-role" class="w-full bg-gray-100 text-gray-800 rounded-md py-2 pl-10 pr-10 focus:outline-none appearance-none" required>
                                 <option value="" disabled selected>เลือกบทบาท</option>
                                 <option value="Contractor">ผู้รับเหมา (Contractor)</option>
-                                <option value="SectionManager">Section Manager</option>
-                                <option value="GM">ผู้จัดการ (GM)</option>
-                                <option value="BranchAdmin">Admin ประจำสาขา</option>
+                                <option value="SectionManager">Section Manager (SM)</option>
+                                <option value="GM">General Manager (GM)</option>
+                                <option value="BranchAdmin">Safety Officer</option>
                             </select>
+                            <span class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none"><i class="fa-solid fa-chevron-down text-gray-400"></i></span>
                         </div>
                         <div id="register-name-wrapper" class="relative mb-4">
                             <span class="absolute inset-y-0 left-0 flex items-center pl-3"><i class="fa-solid fa-id-card text-gray-400"></i></span>
@@ -157,10 +159,11 @@
                             <input type="password" id="register-confirm-password" placeholder="ยืนยันรหัสผ่าน" class="w-full bg-gray-100 text-gray-800 rounded-md py-2 pl-10 pr-3 focus:outline-none" required>
                         </div>
                         <div id="branch-selection-wrapper" class="relative mb-6 hidden">
-                             <span class="absolute inset-y-0 left-0 flex items-center pl-3"><i class="fa-solid fa-building text-gray-400"></i></span>
-                             <select id="register-branch" class="w-full bg-gray-100 text-gray-800 rounded-md py-2 pl-10 pr-3 focus:outline-none">
+                             <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none"><i class="fa-solid fa-building text-gray-400"></i></span>
+                             <select id="register-branch" class="w-full bg-gray-100 text-gray-800 rounded-md py-2 pl-10 pr-10 focus:outline-none appearance-none">
                                 <option value="" disabled selected>เลือกสาขา</option>
                             </select>
+                            <span class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none"><i class="fa-solid fa-chevron-down text-gray-400"></i></span>
                         </div>
                         <button type="submit" class="w-full bg-green-700 text-white font-bold py-2 px-4 rounded-full hover:bg-green-800 transition duration-300">ลงทะเบียน</button>
                         <div class="text-center text-sm mt-4">
@@ -1162,7 +1165,7 @@
         // <<< UPDATED: This function is now more robust and includes debugging
         async function openPermitDetailModal(permitId) {
             const permit = await callAppsScript('getPermitDetails', { permitId });
-            console.log("Received Permit Data:", permit); // DEBUGGING: Log the received data object to the console
+            // console.log("Received Permit Data:", permit); // DEBUGGING: Log the received data object to the console
 
             let actionButtons = '';
             const canSectionManagerApprove = currentUser.role === 'SectionManager' && permit.Status === 'Pending Section Manager Approval';
@@ -2036,6 +2039,17 @@
 
         // --- Initialization ---
         document.addEventListener('DOMContentLoaded', async () => {
+             // PWA Service Worker Registration
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('./sw.js').then(registration => {
+                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                    }, err => {
+                        console.log('ServiceWorker registration failed: ', err);
+                    });
+                });
+            }
+
             // Fetch branches on initial load to cache them
             try {
                 const data = await callAppsScript('getBranches');
