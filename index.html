@@ -219,6 +219,9 @@
                 </div>
                 <nav id="sidebar-menu" class="p-4 space-y-2"></nav>
             </aside>
+            
+            <!-- Sidebar Overlay for mobile -->
+            <div id="sidebar-overlay" class="hidden fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden"></div>
 
             <!-- Main Content Wrapper -->
             <div id="main-content-wrapper" class="md:ml-64">
@@ -532,11 +535,15 @@
 
             document.getElementById('logout-btn').addEventListener('click', handleLogout);
             document.getElementById('menu-toggle-btn').addEventListener('click', toggleSidebar);
+            document.getElementById('sidebar-overlay').addEventListener('click', toggleSidebar);
+
             menuContainer.querySelectorAll('.sidebar-link').forEach(link => {
                 link.addEventListener('click', (e) => {
                     e.preventDefault();
                     navigateTo(link.dataset.page);
-                    if (window.innerWidth < 768) toggleSidebar();
+                    if (window.innerWidth < 768) {
+                        toggleSidebar();
+                    }
                 });
             });
 
@@ -558,11 +565,11 @@
                         await renderAdminUsersPage();
                         break;
                     case 'sectionmanager-permits':
-                        pageTitle.textContent = 'รายการคำขอ (Section Manager)';
+                        pageTitle.textContent = 'รายการคำขอ (รอ SM อนุมัติ)';
                         await renderApproverPermitsPage('SectionManager');
                         break;
                     case 'gm-permits':
-                        pageTitle.textContent = 'รายการคำขอ (GM)';
+                        pageTitle.textContent = 'รายการคำขอ (รอ GM อนุมัติ)';
                         await renderApproverPermitsPage('GM');
                         break;
                     case 'all-permits':
@@ -781,7 +788,7 @@
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">โครงการ</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">วันที่ยื่น</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ผู้ประสานงานหลัก</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">หัวหน้าผู้รับเหมา/ผู้ประสานงาน</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">สถานะ</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">จัดการ</th>
                                 </tr>
@@ -974,7 +981,7 @@
                             <div><strong class="text-gray-600 w-32 inline-block">สาขา:</strong>${permit.BranchName}</div>
                             <div><strong class="text-gray-600 w-32 inline-block">เวลา:</strong>${permit.WorkTime}</div>
                             <div><strong class="text-gray-600 w-32 inline-block">วันที่ปฏิบัติงาน:</strong>${safeFormatDate(permit.StartDate)} - ${safeFormatDate(permit.EndDate)}</div>
-                            <div><strong class="text-gray-600 w-32 inline-block">ผู้ประสานงานหลัก:</strong>${permit.PrimaryContactEmployeeName}</div>
+                            <div><strong class="text-gray-600 w-32 inline-block">หัวหน้าผู้รับเหมา/ผู้ประสานงาน:</strong>${permit.PrimaryContactEmployeeName}</div>
                             <div><strong class="text-gray-600 w-32 inline-block">จำนวนคน:</strong>${permit.NumWorkers} คน</div>
                         </div>
                     </div>
@@ -1000,7 +1007,7 @@
                         </div>
                     </div>
                     <div>
-                        <h4 class="font-semibold text-gray-800 mb-2">การอนุมัติโดย GM</h4>
+                        <h4 class="font-semibold text-gray-800 mb-2">การอนุมัติโดย General Manager/h4>
                         <div class="space-y-1 text-sm">
                             <div><strong class="text-gray-600 w-24 inline-block">สถานะ:</strong> <span class="${getStatusClass(permit.GM_Status)} px-2 py-0.5 rounded-full text-xs">${permit.GM_Status || 'N/A'}</span></div>
                             <div><strong class="text-gray-600 w-24 inline-block">ผู้อนุมัติ:</strong> ${permit.GM_ApproverName || permit.GM_ApproverUsername || '-'}</div>
@@ -1078,7 +1085,7 @@
                             </select>
                         </div>
                         <div>
-                            <label for="permitPrimaryContact" class="block text-sm font-medium text-gray-700">ผู้ประสานงานหลัก</label>
+                            <label for="permitPrimaryContact" class="block text-sm font-medium text-gray-700">หัวหน้าผู้รับเหมา/ผู้ประสานงาน</label>
                             <select id="permitPrimaryContact" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
                                 ${employees.map(e => `<option value="${e.EmployeeID}">${e.EmployeeName}</option>`).join('')}
                             </select>
@@ -1315,7 +1322,7 @@
                             <div><strong class="text-gray-600 w-32 inline-block">สาขา:</strong>${permit.BranchName}</div>
                             <div><strong class="text-gray-600 w-32 inline-block">เวลา:</strong>${permit.WorkTime}</div>
                             <div><strong class="text-gray-600 w-32 inline-block">วันที่ปฏิบัติงาน:</strong>${safeFormatDate(permit.StartDate)} - ${safeFormatDate(permit.EndDate)}</div>
-                            <div><strong class="text-gray-600 w-32 inline-block">ผู้ประสานงานหลัก:</strong>${permit.PrimaryContactEmployeeName}</div>
+                            <div><strong class="text-gray-600 w-32 inline-block">หัวหน้าผู้รับเหมา/ผู้ประสานงาน:</strong>${permit.PrimaryContactEmployeeName}</div>
                             <div><strong class="text-gray-600 w-32 inline-block">จำนวนคน:</strong>${permit.NumWorkers} คน</div>
                         </div>
                     </div>
@@ -1341,7 +1348,7 @@
                         </div>
                     </div>
                     <div>
-                        <h4 class="font-semibold text-gray-800 mb-2">การอนุมัติโดย GM</h4>
+                        <h4 class="font-semibold text-gray-800 mb-2">การอนุมัติโดย Genaral Manager</h4>
                         <div class="space-y-1 text-sm">
                             <div><strong class="text-gray-600 w-24 inline-block">สถานะ:</strong> <span class="${getStatusClass(permit.GM_Status)} px-2 py-0.5 rounded-full text-xs">${permit.GM_Status || 'N/A'}</span></div>
                             <div><strong class="text-gray-600 w-24 inline-block">ผู้อนุมัติ:</strong> ${permit.GM_ApproverName || permit.GM_ApproverUsername || '-'}</div>
@@ -1812,7 +1819,7 @@
                             <div class="grid-item"><strong>บริษัทผู้รับเหมา:</strong> <span>${permit.ContractorName || '-'}</span></div>
                             <div class="grid-item"><strong>โครงการ:</strong> <span>${permit.ProjectName || '-'}</span></div>
                             <div class="grid-item"><strong>สาขา:</strong> <span>${permit.BranchName || '-'}</span></div>
-                            <div class="grid-item"><strong>ผู้ประสานงานหลัก:</strong> <span>${permit.PrimaryContactEmployeeName || '-'}</span></div>
+                            <div class="grid-item"><strong>หัวหน้าผู้รับเหมา/ผู้ประสานงาน:</strong> <span>${permit.PrimaryContactEmployeeName || '-'}</span></div>
                             <div class="grid-item"><strong>วันที่ปฏิบัติงาน:</strong> <span>${formatDateForReport(permit.StartDate)} - ${formatDateForReport(permit.EndDate)}</span></div>
                             <div class="grid-item"><strong>เวลาทำงาน:</strong> <span>${permit.WorkTime || '-'}</span></div>
                             <div class="grid-item"><strong>จำนวนผู้ปฏิบัติงาน:</strong> <span>${permit.NumWorkers} คน</span></div>
@@ -1844,7 +1851,7 @@
                                 <div class="grid-item"><strong>เหตุผล:</strong> <span>${permit.SectionManager_Reason || '-'}</span></div>
                             </div>
                              <div>
-                                <h3 class="font-semibold mb-2">GM</h3>
+                                <h3 class="font-semibold mb-2">General Manager</h3>
                                 <div class="grid-item"><strong>สถานะ:</strong> <span>${permit.GM_Status || 'N/A'}</span></div>
                                 <div class="grid-item"><strong>ผู้อนุมัติ:</strong> <span>${permit.GM_ApproverName || '-'}</span></div>
                                 <div class="grid-item"><strong>วันที่:</strong> <span>${formatDateTimeForReport(permit.GM_ApprovalTimestamp)}</span></div>
@@ -1942,7 +1949,14 @@
         
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
             sidebar.classList.toggle('-translate-x-full');
+            
+            if (!sidebar.classList.contains('-translate-x-full')) {
+                overlay.classList.remove('hidden');
+            } else {
+                overlay.classList.add('hidden');
+            }
         }
 
         async function refreshContractorData() {
