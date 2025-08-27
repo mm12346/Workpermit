@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Work Permit Management</title>
+    
+    <!-- PWA Manifest and Theme Color -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#166534">
+    <link rel="apple-touch-icon" href="https://placehold.co/192x192/166534/FFFFFF?text=WP">
+
     <!-- Tailwind CSS via CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome for icons -->
@@ -2038,6 +2044,17 @@
 
         // --- Initialization ---
         document.addEventListener('DOMContentLoaded', async () => {
+             // PWA Service Worker Registration
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('./sw.js').then(registration => {
+                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                    }, err => {
+                        console.log('ServiceWorker registration failed: ', err);
+                    });
+                });
+            }
+
             // Fetch branches on initial load to cache them
             try {
                 const data = await callAppsScript('getBranches');
